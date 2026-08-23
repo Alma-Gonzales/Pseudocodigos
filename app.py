@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import sqlite3
 import re
 import os
@@ -12,7 +12,14 @@ import threading
 
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ============================================================
+# RUTAS LOCALES
+# ============================================================
+
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
 
 DATOS_DIR = os.path.join(
     BASE_DIR,
@@ -24,20 +31,62 @@ os.makedirs(
     exist_ok=True
 )
 
-DB_NAME = os.path.join(
+SQLITE_DB = os.path.join(
     DATOS_DIR,
     "pseudocodigo.db"
 )
 
 
 # ============================================================
-# BASE DE DATOS
+# DATABASE_URL
+#
+# Si existe:
+#     usamos Supabase PostgreSQL
+#
+# Si NO existe:
+#     usamos SQLite local
+# ============================================================
+
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    ""
+).strip()
+
+USAR_POSTGRES = bool(
+    DATABASE_URL
+)
+
+
+# ============================================================
+# CONEXIÓN A BASE DE DATOS
 # ============================================================
 
 def get_db():
 
+    # ========================================================
+    # POSTGRESQL / SUPABASE
+    # ========================================================
+
+    if USAR_POSTGRES:
+
+        import psycopg
+
+        from psycopg.rows import dict_row
+
+        conn = psycopg.connect(
+            DATABASE_URL,
+            row_factory=dict_row
+        )
+
+        return conn
+
+
+    # ========================================================
+    # SQLITE LOCAL
+    # ========================================================
+
     conn = sqlite3.connect(
-        DB_NAME
+        SQLITE_DB
     )
 
     conn.row_factory = sqlite3.Row
@@ -45,20 +94,52 @@ def get_db():
     return conn
 
 
+# ============================================================
+# INICIALIZAR BASE DE DATOS
+# ============================================================
+
 def init_db():
 
     conn = get_db()
 
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS ejercicios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nombre TEXT NOT NULL,
-            pseudocodigo TEXT NOT NULL,
-            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    cursor = conn.cursor()
+
+
+    # ========================================================
+    # SUPABASE / POSTGRESQL
+    # ========================================================
+
+    if USAR_POSTGRES:
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ejercicios (
+                id BIGSERIAL PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                pseudocodigo TEXT NOT NULL,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+
+    # ========================================================
+    # SQLITE
+    # ========================================================
+
+    else:
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ejercicios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                pseudocodigo TEXT NOT NULL,
+                fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
 
     conn.commit()
+
+    cursor.close()
 
     conn.close()
 
@@ -94,37 +175,14 @@ def quitar_comentarios(linea):
 
 def normalizar_operadores(texto):
 
-    # --------------------------------------------------------
     # Diferente
-    # --------------------------------------------------------
-
     texto = texto.replace(
         "<>",
         "!="
     )
 
 
-    # --------------------------------------------------------
-    # Operador Y
-    #
-    # IMPORTANTE:
-    #
-    # Esta función solamente debe recibir expresiones donde
-    # las variables ya fueron sustituidas.
-    #
-    # Ejemplo:
-    #
-    # x > 5 Y y < 10
-    #
-    # primero se convierten las variables:
-    #
-    # 7 > 5 Y 8 < 10
-    #
-    # y después:
-    #
-    # 7 > 5 and 8 < 10
-    # --------------------------------------------------------
-
+    # Y lógico
     texto = re.sub(
         r"\bY\b",
         " and ",
@@ -133,10 +191,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # --------------------------------------------------------
-    # Operador O
-    # --------------------------------------------------------
-
+    # O lógico
     texto = re.sub(
         r"\bO\b",
         " or ",
@@ -145,10 +200,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # --------------------------------------------------------
-    # Operador NO
-    # --------------------------------------------------------
-
+    # NO lógico
     texto = re.sub(
         r"\bNO\b",
         " not ",
@@ -157,20 +209,14 @@ def normalizar_operadores(texto):
     )
 
 
-    # --------------------------------------------------------
     # Potencia
-    # --------------------------------------------------------
-
     texto = texto.replace(
         "^",
         "**"
     )
 
 
-    # --------------------------------------------------------
     # Verdadero
-    # --------------------------------------------------------
-
     texto = re.sub(
         r"\bVerdadero\b",
         "True",
@@ -179,10 +225,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # --------------------------------------------------------
     # Falso
-    # --------------------------------------------------------
-
     texto = re.sub(
         r"\bFalso\b",
         "False",
@@ -191,25 +234,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # --------------------------------------------------------
-    # Igual
-    #
-    # Convierte:
-    #
-    # =
-    #
-    # en:
-    #
-    # ==
-    #
-    # pero NO modifica:
-    #
-    # <=
-    # >=
-    # !=
-    # ==
-    # --------------------------------------------------------
-
+    # Igualdad
     texto = re.sub(
         r"(?<![<>=!])=(?!=)",
         "==",
@@ -311,10 +336,7 @@ def convertir_valor(valor):
         return False
 
 
-    # --------------------------------------------------------
-    # ENTERO
-    # --------------------------------------------------------
-
+    # Entero
     try:
 
         return int(
@@ -326,10 +348,7 @@ def convertir_valor(valor):
         pass
 
 
-    # --------------------------------------------------------
-    # DECIMAL
-    # --------------------------------------------------------
-
+    # Decimal
     try:
 
         return float(
@@ -341,10 +360,7 @@ def convertir_valor(valor):
         pass
 
 
-    # --------------------------------------------------------
-    # TEXTO
-    # --------------------------------------------------------
-
+    # Texto
     return valor
 
 
@@ -361,7 +377,7 @@ def evaluar_expresion(
 
 
     # ========================================================
-    # TEXTO ENTRE COMILLAS
+    # TEXTO
     # ========================================================
 
     if (
@@ -376,26 +392,8 @@ def evaluar_expresion(
     # ========================================================
     # SUSTITUIR VARIABLES PRIMERO
     #
-    # ESTE ES EL CAMBIO IMPORTANTE.
-    #
-    # Antes se convertía primero:
-    #
-    # y -> and
-    #
-    # y después se intentaba sustituir la variable.
-    #
-    # Ahora hacemos:
-    #
-    # x + y
-    #
-    # x = 5
-    # y = 7
-    #
-    # primero:
-    #
-    # 5 + 7
-    #
-    # y solamente después se procesan operadores.
+    # Esto evita que una variable llamada "y"
+    # sea confundida con el operador lógico Y.
     # ========================================================
 
     nombres = sorted(
@@ -420,7 +418,7 @@ def evaluar_expresion(
 
 
     # ========================================================
-    # NORMALIZAR OPERADORES DESPUÉS DE SUSTITUIR VARIABLES
+    # OPERADORES
     # ========================================================
 
     expresion = normalizar_operadores(
@@ -441,7 +439,7 @@ def evaluar_expresion(
 
 
     # ========================================================
-    # VALIDAR CARACTERES PERMITIDOS
+    # VALIDACIÓN
     # ========================================================
 
     permitidos = re.fullmatch(
@@ -467,6 +465,7 @@ def evaluar_expresion(
                 "__builtins__": {}
             }
         )
+
 
     except Exception:
 
@@ -511,7 +510,7 @@ def evaluar_condicion(
 
 
     # ========================================================
-    # NORMALIZAR OPERADORES DESPUÉS
+    # OPERADORES
     # ========================================================
 
     condicion = normalizar_operadores(
@@ -520,7 +519,7 @@ def evaluar_condicion(
 
 
     # ========================================================
-    # EVALUAR CONDICIÓN
+    # EVALUAR
     # ========================================================
 
     try:
@@ -597,7 +596,7 @@ def dividir_escribir(
 
 
 # ============================================================
-# EJECUTOR
+# EJECUTOR DE PSEUDOCÓDIGO
 # ============================================================
 
 class Ejecutor:
@@ -611,16 +610,11 @@ class Ejecutor:
         self.lineas = []
 
 
-        # ====================================================
-        # PREPARAR LÍNEAS
-        # ====================================================
-
         for linea in pseudocodigo.splitlines():
 
             linea = quitar_comentarios(
                 linea
             )
-
 
             linea = limpiar_linea(
                 linea
@@ -634,10 +628,6 @@ class Ejecutor:
                 )
 
 
-        # ====================================================
-        # VARIABLES
-        # ====================================================
-
         self.variables = {}
 
 
@@ -650,18 +640,10 @@ class Ejecutor:
             )
 
 
-        # ====================================================
-        # RESULTADOS
-        # ====================================================
-
         self.salidas = []
 
         self.tabla_filas = []
 
-
-        # ====================================================
-        # EJECUTAR
-        # ====================================================
 
         self.ejecutar_bloque(
             0,
@@ -811,11 +793,7 @@ class Ejecutor:
                     )
 
 
-                # IMPORTANTE:
-                # Escribir separa los argumentos con espacio
-                # cuando hay varios argumentos.
-
-                texto_completo = " ".join(
+                texto_completo = "".join(
                     valores
                 )
 
@@ -824,10 +802,6 @@ class Ejecutor:
                     texto_completo
                 )
 
-
-                # =================================================
-                # DETECTAR FILAS DE TABLA
-                # =================================================
 
                 if "|" in texto_completo:
 
@@ -1115,7 +1089,9 @@ class Ejecutor:
 
 
                     condicion_linea = (
-                        self.lineas[fin_repetir]
+                        self.lineas[
+                            fin_repetir
+                        ]
                     )
 
 
@@ -1147,10 +1123,6 @@ class Ejecutor:
 
                 continue
 
-
-            # =================================================
-            # SIGUIENTE LÍNEA
-            # =================================================
 
             i += 1
 
@@ -1346,7 +1318,38 @@ def ejecutar_pseudocodigo(
 
 
 # ============================================================
-# DIAGRAMA DE FLUJO
+# ESCAPAR TEXTO PARA MERMAID
+# ============================================================
+
+def escapar_mermaid(
+    texto
+):
+
+    texto = texto.replace(
+        '"',
+        "'"
+    )
+
+    texto = texto.replace(
+        "[",
+        "("
+    )
+
+    texto = texto.replace(
+        "]",
+        ")"
+    )
+
+    texto = texto.replace(
+        "\n",
+        "<br/>"
+    )
+
+    return texto
+
+
+# ============================================================
+# GENERAR DIAGRAMA
 # ============================================================
 
 def generar_diagrama(
@@ -1371,36 +1374,29 @@ def generar_diagrama(
         "classDef inicio fill:#2563eb,stroke:#1d4ed8,color:#ffffff,stroke-width:2px"
     )
 
-
     mermaid.append(
         "classDef leer fill:#22c55e,stroke:#15803d,color:#ffffff,stroke-width:2px"
     )
-
 
     mermaid.append(
         "classDef escribir fill:#60a5fa,stroke:#2563eb,color:#ffffff,stroke-width:2px"
     )
 
-
     mermaid.append(
         "classDef asignacion fill:#14b8a6,stroke:#0f766e,color:#ffffff,stroke-width:2px"
     )
-
 
     mermaid.append(
         "classDef decision fill:#a855f7,stroke:#7e22ce,color:#ffffff,stroke-width:2px"
     )
 
-
     mermaid.append(
         "classDef para fill:#f97316,stroke:#c2410c,color:#ffffff,stroke-width:2px"
     )
 
-
     mermaid.append(
         "classDef mientras fill:#facc15,stroke:#ca8a04,color:#111827,stroke-width:2px"
     )
-
 
     mermaid.append(
         "classDef repetir fill:#ec4899,stroke:#be185d,color:#ffffff,stroke-width:2px"
@@ -1410,22 +1406,15 @@ def generar_diagrama(
     contador = 0
 
 
-    inicio = "inicio"
-
-
     mermaid.append(
         'inicio(["INICIO"]):::inicio'
     )
 
 
-    anterior = inicio
+    anterior = "inicio"
 
     pila = []
 
-
-    # ========================================================
-    # PROCESAR PSEUDOCÓDIGO
-    # ========================================================
 
     for linea in lineas:
 
@@ -1483,7 +1472,6 @@ def generar_diagrama(
 
             variable = linea[5:].strip()
 
-
             contador += 1
 
             nodo = f"n{contador}"
@@ -1518,13 +1506,6 @@ def generar_diagrama(
         ):
 
             texto = linea[8:].strip()
-
-
-            texto = texto.replace(
-                '"',
-                "'"
-            )
-
 
             texto = escapar_mermaid(
                 f"ESCRIBIR<br/>{texto}"
@@ -1566,13 +1547,6 @@ def generar_diagrama(
 
             condicion = coincidencia.group(1)
 
-
-            condicion = condicion.replace(
-                '"',
-                "'"
-            )
-
-
             condicion = escapar_mermaid(
                 condicion
             )
@@ -1596,7 +1570,6 @@ def generar_diagrama(
             pila.append({
                 "tipo": "si",
                 "nodo": nodo,
-                "salida_si": None,
                 "salida_no": None
             })
 
@@ -1619,7 +1592,9 @@ def generar_diagrama(
 
                 actual = pila[-1]
 
-                decision = actual["nodo"]
+                decision = actual[
+                    "nodo"
+                ]
 
 
                 contador += 1
@@ -1637,7 +1612,9 @@ def generar_diagrama(
                 )
 
 
-                actual["salida_no"] = nodo
+                actual[
+                    "salida_no"
+                ] = nodo
 
 
                 anterior = nodo
@@ -1659,10 +1636,14 @@ def generar_diagrama(
 
                 actual = pila.pop()
 
-                decision = actual["nodo"]
+                decision = actual[
+                    "nodo"
+                ]
 
 
-                if actual["salida_no"] is None:
+                if actual[
+                    "salida_no"
+                ] is None:
 
                     mermaid.append(
                         f"{decision} -->|SÍ| {anterior}"
@@ -1711,7 +1692,6 @@ def generar_diagrama(
         if coincidencia:
 
             variable = coincidencia.group(1)
-
 
             contador += 1
 
@@ -1822,12 +1802,6 @@ def generar_diagrama(
             )
 
 
-            texto = texto.replace(
-                '"',
-                "'"
-            )
-
-
             texto = escapar_mermaid(
                 texto
             )
@@ -1878,41 +1852,6 @@ def generar_diagrama(
 
 
 # ============================================================
-# ESCAPAR MERMAID
-# ============================================================
-
-def escapar_mermaid(
-    texto
-):
-
-    texto = texto.replace(
-        '"',
-        "'"
-    )
-
-
-    texto = texto.replace(
-        "[",
-        "("
-    )
-
-
-    texto = texto.replace(
-        "]",
-        ")"
-    )
-
-
-    texto = texto.replace(
-        "\n",
-        "<br/>"
-    )
-
-
-    return texto
-
-
-# ============================================================
 # API EJERCICIOS - OBTENER
 # ============================================================
 
@@ -1924,13 +1863,24 @@ def obtener_ejercicios():
 
     conn = get_db()
 
+    cursor = conn.cursor()
 
-    filas = conn.execute("""
-        SELECT *
+
+    cursor.execute("""
+        SELECT
+            id,
+            nombre,
+            pseudocodigo,
+            fecha
         FROM ejercicios
         ORDER BY id DESC
-    """).fetchall()
+    """)
 
+
+    filas = cursor.fetchall()
+
+
+    cursor.close()
 
     conn.close()
 
@@ -1940,7 +1890,9 @@ def obtener_ejercicios():
             "id": f["id"],
             "nombre": f["nombre"],
             "pseudocodigo": f["pseudocodigo"],
-            "fecha": f["fecha"]
+            "fecha": str(
+                f["fecha"]
+            )
         }
 
         for f in filas
@@ -1976,25 +1928,64 @@ def crear_ejercicio():
 
     conn = get_db()
 
+    cursor = conn.cursor()
 
-    cursor = conn.execute(
-        """
-        INSERT INTO ejercicios
-        (nombre, pseudocodigo)
-        VALUES (?, ?)
-        """,
-        (
-            nombre,
-            pseudocodigo
+
+    # ========================================================
+    # POSTGRES
+    # ========================================================
+
+    if USAR_POSTGRES:
+
+        cursor.execute(
+            """
+            INSERT INTO ejercicios
+            (nombre, pseudocodigo)
+            VALUES (%s, %s)
+            RETURNING id
+            """,
+            (
+                nombre,
+                pseudocodigo
+            )
         )
-    )
+
+
+        fila = cursor.fetchone()
+
+        nuevo_id = fila[
+            "id"
+        ]
+
+
+    # ========================================================
+    # SQLITE
+    # ========================================================
+
+    else:
+
+        cursor.execute(
+            """
+            INSERT INTO ejercicios
+            (nombre, pseudocodigo)
+            VALUES (?, ?)
+            """,
+            (
+                nombre,
+                pseudocodigo
+            )
+        )
+
+
+        nuevo_id = (
+            cursor.lastrowid
+        )
 
 
     conn.commit()
 
 
-    nuevo_id = cursor.lastrowid
-
+    cursor.close()
 
     conn.close()
 
@@ -2034,23 +2025,49 @@ def actualizar_ejercicio(id):
 
     conn = get_db()
 
+    cursor = conn.cursor()
 
-    conn.execute(
-        """
-        UPDATE ejercicios
-        SET nombre = ?,
-            pseudocodigo = ?
-        WHERE id = ?
-        """,
-        (
-            nombre,
-            pseudocodigo,
-            id
+
+    if USAR_POSTGRES:
+
+        cursor.execute(
+            """
+            UPDATE ejercicios
+            SET
+                nombre = %s,
+                pseudocodigo = %s
+            WHERE id = %s
+            """,
+            (
+                nombre,
+                pseudocodigo,
+                id
+            )
         )
-    )
+
+
+    else:
+
+        cursor.execute(
+            """
+            UPDATE ejercicios
+            SET
+                nombre = ?,
+                pseudocodigo = ?
+            WHERE id = ?
+            """,
+            (
+                nombre,
+                pseudocodigo,
+                id
+            )
+        )
 
 
     conn.commit()
+
+
+    cursor.close()
 
     conn.close()
 
@@ -2072,17 +2089,35 @@ def eliminar_ejercicio(id):
 
     conn = get_db()
 
+    cursor = conn.cursor()
 
-    conn.execute(
-        """
-        DELETE FROM ejercicios
-        WHERE id = ?
-        """,
-        (id,)
-    )
+
+    if USAR_POSTGRES:
+
+        cursor.execute(
+            """
+            DELETE FROM ejercicios
+            WHERE id = %s
+            """,
+            (id,)
+        )
+
+
+    else:
+
+        cursor.execute(
+            """
+            DELETE FROM ejercicios
+            WHERE id = ?
+            """,
+            (id,)
+        )
 
 
     conn.commit()
+
+
+    cursor.close()
 
     conn.close()
 
@@ -2150,12 +2185,23 @@ def ejecutar():
 
 
         return jsonify({
-    "ok": True,
-    "salidas": resultado["salidas"],
-    "tabla": resultado["tabla"],
-    "variables": resultado["variables"],
-    "entradas": datos.get("entradas", {})
-})
+            "ok": True,
+
+            "salidas":
+                resultado["salidas"],
+
+            "tabla":
+                resultado["tabla"],
+
+            "variables":
+                resultado["variables"],
+
+            "entradas":
+                datos.get(
+                    "entradas",
+                    {}
+                )
+        })
 
 
     except Exception as e:
@@ -2212,23 +2258,24 @@ def diagrama():
 @app.route("/")
 def index():
 
-    # --------------------------------------------------------
-    # El HTML está en:
-    #
-    # templates/index.html
-    #
-    # No se coloca HTML dentro de app.py.
-    # --------------------------------------------------------
-
-    from flask import render_template
-
     return render_template(
         "index.html"
     )
 
 
 # ============================================================
-# ABRIR NAVEGADOR AUTOMÁTICAMENTE
+# INICIALIZAR TABLAS
+#
+# IMPORTANTE:
+# Esto también se ejecuta cuando Gunicorn importa app.py
+# en Render.
+# ============================================================
+
+init_db()
+
+
+# ============================================================
+# ABRIR NAVEGADOR LOCAL
 # ============================================================
 
 def abrir_navegador():
@@ -2239,13 +2286,10 @@ def abrir_navegador():
 
 
 # ============================================================
-# INICIAR SERVIDOR
+# EJECUTAR LOCALMENTE
 # ============================================================
 
 if __name__ == "__main__":
-
-    init_db()
-
 
     threading.Timer(
         1.5,
