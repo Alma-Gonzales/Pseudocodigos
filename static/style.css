@@ -736,3 +736,125 @@ textarea {
     font-size: 13px;
     color: #94a3b8;
 }
+
+/* =========================================================
+   CÓDIGO GENERADO
+   ========================================================= */
+
+.code-panel {
+
+    max-width: 1402px;
+
+    margin: 0 auto 20px;
+}
+
+
+.language-buttons {
+
+    display: flex;
+
+    gap: 8px;
+}
+
+
+.language-btn {
+
+    border: 1px solid #dbe2ea;
+
+    background: #f1f5f9;
+
+    color: #475569;
+
+    padding: 8px 16px;
+
+    border-radius: 7px;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: .15s;
+}
+
+
+.language-btn:hover {
+
+    background: #e2e8f0;
+}
+
+
+.language-btn.active {
+
+    background: #2563eb;
+
+    border-color: #2563eb;
+
+    color: white;
+}
+
+
+.code-container {
+
+    background: #111827;
+
+    padding: 22px;
+
+    overflow: auto;
+
+    min-height: 260px;
+
+    max-height: 600px;
+}
+
+
+.code-container pre {
+
+    margin: 0;
+
+    white-space: pre;
+
+    overflow: auto;
+}
+
+
+.code-container code {
+
+    font-family:
+        Consolas,
+        "Courier New",
+        monospace;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+
+    color: #e5e7eb;
+}
+
+
+/* PYTHON/C++ EN MÓVIL */
+
+@media (max-width: 700px) {
+
+    .code-panel {
+
+        margin-left: 12px;
+
+        margin-right: 12px;
+    }
+
+
+    .language-buttons {
+
+        width: 100%;
+    }
+
+
+    .language-btn {
+
+        flex: 1;
+    }
+
+}

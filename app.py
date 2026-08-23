@@ -4,14 +4,14 @@ import re
 import os
 import webbrowser
 import threading
-
+from traductor import traductor_bp
 
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
 
 app = Flask(__name__)
-
+app.register_blueprint(traductor_bp)
 
 # ============================================================
 # RUTAS LOCALES

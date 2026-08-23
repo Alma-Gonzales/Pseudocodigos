@@ -256,6 +256,59 @@
 
     </section>
 
+    <!-- ================================================= -->
+<!-- CÓDIGO GENERADO -->
+<!-- ================================================= -->
+
+<section class="panel code-panel">
+
+    <div class="panel-header">
+
+        <div>
+
+            <h2>
+                Código generado
+            </h2>
+
+            <p>
+                Conversión automática del pseudocódigo
+            </p>
+
+        </div>
+
+
+        <div class="language-buttons">
+
+            <button
+                id="btnPython"
+                class="language-btn active"
+                type="button"
+            >
+                Python
+            </button>
+
+            <button
+                id="btnCpp"
+                class="language-btn"
+                type="button"
+            >
+                C++
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="code-container">
+
+        <pre><code
+            id="codigoGenerado"
+        >El código generado aparecerá aquí.</code></pre>
+
+    </div>
+
+</section>
 
     <!-- ================================================= -->
     <!-- EJERCICIOS GUARDADOS -->
@@ -324,6 +377,10 @@
 
 <script
     src="{{ url_for('static', filename='app.js') }}"
+></script>
+
+<script
+    src="{{ url_for('static', filename='traductor.js') }}"
 ></script>
 
 </body>
