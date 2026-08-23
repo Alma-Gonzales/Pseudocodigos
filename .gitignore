@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Base de datos local
+Datos/pseudocodigo.db
+datos/pseudocodigo.db
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
