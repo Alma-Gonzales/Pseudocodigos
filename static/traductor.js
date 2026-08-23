@@ -26,6 +26,11 @@ document.addEventListener(
                 "btnCpp"
             );
 
+        const btnLimpiar =
+            document.getElementById(
+                "btnLimpiar"
+            );
+
 
         if (
             !editor ||
@@ -87,6 +92,35 @@ document.addEventListener(
 
 
         // ====================================================
+        // LIMPIAR CÓDIGO GENERADO
+        // ====================================================
+
+        function limpiarCodigoGenerado() {
+
+            codigoPython = "";
+
+            codigoCpp = "";
+
+            lenguajeActual =
+                "python";
+
+
+            btnPython.classList.add(
+                "active"
+            );
+
+
+            btnCpp.classList.remove(
+                "active"
+            );
+
+
+            visor.textContent =
+                "El código generado aparecerá aquí.";
+        }
+
+
+        // ====================================================
         // BOTÓN PYTHON
         // ====================================================
 
@@ -141,7 +175,7 @@ document.addEventListener(
 
 
         // ====================================================
-        // GENERAR
+        // GENERAR CÓDIGO
         // ====================================================
 
         async function generarCodigo() {
@@ -152,11 +186,7 @@ document.addEventListener(
 
             if (!pseudocodigo) {
 
-                codigoPython = "";
-
-                codigoCpp = "";
-
-                mostrarCodigo();
+                limpiarCodigoGenerado();
 
                 return;
             }
@@ -248,7 +278,7 @@ document.addEventListener(
 
 
         // ====================================================
-        // ACTUALIZAR CUANDO SE PULSE GENERAR DIAGRAMA
+        // ACTUALIZAR CUANDO SE PULSE DIAGRAMA
         // ====================================================
 
         const btnDiagrama =
@@ -281,6 +311,28 @@ document.addEventListener(
             btnEjecutar.addEventListener(
                 "click",
                 generarCodigo
+            );
+        }
+
+
+        // ====================================================
+        // LIMPIAR TAMBIÉN PYTHON Y C++
+        // ====================================================
+
+        if (btnLimpiar) {
+
+            btnLimpiar.addEventListener(
+                "click",
+                function () {
+
+                    clearTimeout(
+                        temporizador
+                    );
+
+
+                    limpiarCodigoGenerado();
+
+                }
             );
         }
 

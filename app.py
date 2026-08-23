@@ -1,20 +1,25 @@
 from flask import Flask, request, jsonify, render_template
+from traductor import traductor_bp
+
 import sqlite3
 import re
 import os
 import webbrowser
 import threading
-from traductor import traductor_bp
+
 
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
 
 app = Flask(__name__)
+
+# Módulo separado para convertir pseudocódigo a Python y C++
 app.register_blueprint(traductor_bp)
 
+
 # ============================================================
-# RUTAS LOCALES
+# RUTAS
 # ============================================================
 
 BASE_DIR = os.path.dirname(
@@ -38,13 +43,13 @@ SQLITE_DB = os.path.join(
 
 
 # ============================================================
-# DATABASE_URL
+# BASE DE DATOS
 #
-# Si existe:
-#     usamos Supabase PostgreSQL
+# LOCAL:
+#   SQLite
 #
-# Si NO existe:
-#     usamos SQLite local
+# RENDER:
+#   Supabase PostgreSQL mediante DATABASE_URL
 # ============================================================
 
 DATABASE_URL = os.environ.get(
@@ -63,9 +68,9 @@ USAR_POSTGRES = bool(
 
 def get_db():
 
-    # ========================================================
+    # --------------------------------------------------------
     # POSTGRESQL / SUPABASE
-    # ========================================================
+    # --------------------------------------------------------
 
     if USAR_POSTGRES:
 
@@ -81,9 +86,9 @@ def get_db():
         return conn
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # SQLITE LOCAL
-    # ========================================================
+    # --------------------------------------------------------
 
     conn = sqlite3.connect(
         SQLITE_DB
@@ -105,9 +110,9 @@ def init_db():
     cursor = conn.cursor()
 
 
-    # ========================================================
-    # SUPABASE / POSTGRESQL
-    # ========================================================
+    # --------------------------------------------------------
+    # POSTGRESQL
+    # --------------------------------------------------------
 
     if USAR_POSTGRES:
 
@@ -121,9 +126,9 @@ def init_db():
         """)
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # SQLITE
-    # ========================================================
+    # --------------------------------------------------------
 
     else:
 
@@ -182,7 +187,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # Y lógico
+    # Operador lógico Y
     texto = re.sub(
         r"\bY\b",
         " and ",
@@ -191,7 +196,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # O lógico
+    # Operador lógico O
     texto = re.sub(
         r"\bO\b",
         " or ",
@@ -200,7 +205,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # NO lógico
+    # Operador lógico NO
     texto = re.sub(
         r"\bNO\b",
         " not ",
@@ -246,7 +251,7 @@ def normalizar_operadores(texto):
 
 
 # ============================================================
-# DETECTAR VARIABLES DE LEER
+# DETECTAR VARIABLES DE ENTRADA
 # ============================================================
 
 def detectar_variables_entrada(
@@ -326,6 +331,10 @@ def convertir_valor(valor):
         return ""
 
 
+    # --------------------------------------------------------
+    # BOOLEANOS
+    # --------------------------------------------------------
+
     if valor.lower() == "verdadero":
 
         return True
@@ -336,7 +345,10 @@ def convertir_valor(valor):
         return False
 
 
-    # Entero
+    # --------------------------------------------------------
+    # ENTERO
+    # --------------------------------------------------------
+
     try:
 
         return int(
@@ -348,7 +360,10 @@ def convertir_valor(valor):
         pass
 
 
-    # Decimal
+    # --------------------------------------------------------
+    # REAL
+    # --------------------------------------------------------
+
     try:
 
         return float(
@@ -360,7 +375,10 @@ def convertir_valor(valor):
         pass
 
 
-    # Texto
+    # --------------------------------------------------------
+    # TEXTO
+    # --------------------------------------------------------
+
     return valor
 
 
@@ -376,9 +394,9 @@ def evaluar_expresion(
     expresion = expresion.strip()
 
 
-    # ========================================================
-    # TEXTO
-    # ========================================================
+    # --------------------------------------------------------
+    # TEXTO ENTRE COMILLAS
+    # --------------------------------------------------------
 
     if (
         len(expresion) >= 2
@@ -390,10 +408,12 @@ def evaluar_expresion(
 
 
     # ========================================================
-    # SUSTITUIR VARIABLES PRIMERO
+    # IMPORTANTE
     #
-    # Esto evita que una variable llamada "y"
-    # sea confundida con el operador lógico Y.
+    # Las variables se sustituyen ANTES de normalizar Y/O/NO.
+    #
+    # Esto evita que una variable llamada "y" se convierta
+    # accidentalmente en "and".
     # ========================================================
 
     nombres = sorted(
@@ -417,18 +437,18 @@ def evaluar_expresion(
         )
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # OPERADORES
-    # ========================================================
+    # --------------------------------------------------------
 
     expresion = normalizar_operadores(
         expresion
     )
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # RAÍZ CUADRADA
-    # ========================================================
+    # --------------------------------------------------------
 
     expresion = re.sub(
         r"\bRC\((.*?)\)",
@@ -438,9 +458,9 @@ def evaluar_expresion(
     )
 
 
-    # ========================================================
-    # VALIDACIÓN
-    # ========================================================
+    # --------------------------------------------------------
+    # SEGURIDAD
+    # --------------------------------------------------------
 
     permitidos = re.fullmatch(
         r"[0-9A-Za-z_+\-*/().%, '<>=!&|]*",
@@ -453,9 +473,9 @@ def evaluar_expresion(
         return expresion
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # EVALUAR
-    # ========================================================
+    # --------------------------------------------------------
 
     try:
 
@@ -484,9 +504,9 @@ def evaluar_condicion(
     condicion = condicion.strip()
 
 
-    # ========================================================
-    # SUSTITUIR VARIABLES PRIMERO
-    # ========================================================
+    # --------------------------------------------------------
+    # VARIABLES PRIMERO
+    # --------------------------------------------------------
 
     nombres = sorted(
         variables.keys(),
@@ -509,18 +529,14 @@ def evaluar_condicion(
         )
 
 
-    # ========================================================
-    # OPERADORES
-    # ========================================================
+    # --------------------------------------------------------
+    # OPERADORES DESPUÉS
+    # --------------------------------------------------------
 
     condicion = normalizar_operadores(
         condicion
     )
 
-
-    # ========================================================
-    # EVALUAR
-    # ========================================================
 
     try:
 
@@ -556,6 +572,8 @@ def dividir_escribir(
 
     dentro_comillas = False
 
+    profundidad_parentesis = 0
+
 
     for caracter in contenido:
 
@@ -567,22 +585,36 @@ def dividir_escribir(
 
             actual += caracter
 
-
-        elif (
-            caracter == ","
-            and not dentro_comillas
-        ):
-
-            partes.append(
-                actual.strip()
-            )
-
-            actual = ""
+            continue
 
 
-        else:
+        if not dentro_comillas:
 
-            actual += caracter
+            if caracter == "(":
+
+                profundidad_parentesis += 1
+
+
+            elif caracter == ")":
+
+                profundidad_parentesis -= 1
+
+
+            elif (
+                caracter == ","
+                and profundidad_parentesis == 0
+            ):
+
+                partes.append(
+                    actual.strip()
+                )
+
+                actual = ""
+
+                continue
+
+
+        actual += caracter
 
 
     if actual.strip():
@@ -607,6 +639,10 @@ class Ejecutor:
         entradas
     ):
 
+        # ----------------------------------------------------
+        # LÍNEAS
+        # ----------------------------------------------------
+
         self.lineas = []
 
 
@@ -628,6 +664,10 @@ class Ejecutor:
                 )
 
 
+        # ----------------------------------------------------
+        # VARIABLES
+        # ----------------------------------------------------
+
         self.variables = {}
 
 
@@ -640,10 +680,18 @@ class Ejecutor:
             )
 
 
+        # ----------------------------------------------------
+        # SALIDA
+        # ----------------------------------------------------
+
         self.salidas = []
 
         self.tabla_filas = []
 
+
+        # ----------------------------------------------------
+        # EJECUTAR
+        # ----------------------------------------------------
 
         self.ejecutar_bloque(
             0,
@@ -710,6 +758,23 @@ class Ejecutor:
 
             # =================================================
             # LEER
+            #
+            # REGLA GENERAL:
+            #
+            # Escribir "Ingrese algo:"
+            # Leer variable
+            #
+            # Produce:
+            #
+            # Ingrese algo: VALOR
+            #
+            # Y si no existe Escribir antes:
+            #
+            # Leer variable
+            #
+            # Produce:
+            #
+            # variable = VALOR
             # =================================================
 
             coincidencia = re.match(
@@ -726,9 +791,24 @@ class Ejecutor:
                 )
 
 
+                variables_leer = []
+
+
                 for variable in contenido.split(","):
 
-                    variable = variable.strip()
+                    variable = (
+                        variable.strip()
+                    )
+
+
+                    if not variable:
+
+                        continue
+
+
+                    variables_leer.append(
+                        variable
+                    )
 
 
                     if variable not in self.variables:
@@ -736,6 +816,114 @@ class Ejecutor:
                         self.variables[
                             variable
                         ] = ""
+
+
+                # =================================================
+                # COMPROBAR SI JUSTO ANTES HABÍA UN ESCRIBIR
+                # =================================================
+
+                anterior_es_escribir = False
+
+
+                if i > 0:
+
+                    linea_anterior = (
+                        self.lineas[
+                            i - 1
+                        ]
+                    )
+
+
+                    anterior_es_escribir = bool(
+                        re.match(
+                            r"^Escribir\b",
+                            linea_anterior,
+                            flags=re.IGNORECASE
+                        )
+                    )
+
+
+                # =================================================
+                # SI HAY ESCRIBIR ANTES:
+                #
+                # Agregar el valor al mensaje anterior.
+                # =================================================
+
+                if (
+                    anterior_es_escribir
+                    and self.salidas
+                ):
+
+                    valores = []
+
+
+                    for variable in variables_leer:
+
+                        valor = self.variables.get(
+                            variable,
+                            ""
+                        )
+
+
+                        valores.append(
+                            str(valor)
+                        )
+
+
+                    texto_valores = " ".join(
+                        valores
+                    )
+
+
+                    texto_anterior = str(
+                        self.salidas[-1]
+                    )
+
+
+                    if texto_valores:
+
+                        # Agregar espacio solo si hace falta
+                        if (
+                            texto_anterior
+                            and not texto_anterior.endswith(
+                                (
+                                    " ",
+                                    "\t",
+                                    "\n"
+                                )
+                            )
+                        ):
+
+                            texto_anterior += " "
+
+
+                        self.salidas[-1] = (
+                            texto_anterior
+                            + texto_valores
+                        )
+
+
+                # =================================================
+                # SI NO HAY ESCRIBIR ANTES:
+                #
+                # Mostrar automáticamente:
+                #
+                # variable = valor
+                # =================================================
+
+                else:
+
+                    for variable in variables_leer:
+
+                        valor = self.variables.get(
+                            variable,
+                            ""
+                        )
+
+
+                        self.salidas.append(
+                            f"{variable} = {valor}"
+                        )
 
 
                 i += 1
@@ -760,6 +948,10 @@ class Ejecutor:
                     coincidencia.group(1)
                 )
 
+
+                # ------------------------------------------------
+                # ESCRIBIR VACÍO
+                # ------------------------------------------------
 
                 if contenido.strip() == "":
 
@@ -793,6 +985,16 @@ class Ejecutor:
                     )
 
 
+                # ------------------------------------------------
+                # UNIR SIN AGREGAR TEXTO EXTRA
+                #
+                # Escribir "Resultado: ", suma
+                #
+                # Resultado:
+                #
+                # Resultado: 15
+                # ------------------------------------------------
+
                 texto_completo = "".join(
                     valores
                 )
@@ -802,6 +1004,10 @@ class Ejecutor:
                     texto_completo
                 )
 
+
+                # ------------------------------------------------
+                # TABLAS
+                # ------------------------------------------------
 
                 if "|" in texto_completo:
 
@@ -833,9 +1039,13 @@ class Ejecutor:
 
             if coincidencia:
 
-                variable = coincidencia.group(1)
+                variable = (
+                    coincidencia.group(1)
+                )
 
-                expresion = coincidencia.group(2)
+                expresion = (
+                    coincidencia.group(2)
+                )
 
 
                 valor = evaluar_expresion(
@@ -867,7 +1077,9 @@ class Ejecutor:
 
             if coincidencia:
 
-                condicion = coincidencia.group(1)
+                condicion = (
+                    coincidencia.group(1)
+                )
 
 
                 fin_si, posicion_sino = (
@@ -883,7 +1095,9 @@ class Ejecutor:
 
                 if resultado:
 
-                    inicio_bloque = i + 1
+                    inicio_bloque = (
+                        i + 1
+                    )
 
 
                     fin_bloque = (
@@ -917,7 +1131,10 @@ class Ejecutor:
             # =================================================
 
             coincidencia = re.match(
-                r"^Para\s+(\w+)\s*<-\s*(.+?)\s+Hasta\s+(.+?)(?:\s+Con\s+Paso\s+(.+?))?\s+Hacer$",
+                r"^Para\s+(\w+)\s*<-\s*(.+?)"
+                r"\s+Hasta\s+(.+?)"
+                r"(?:\s+Con\s+Paso\s+(.+?))?"
+                r"\s+Hacer$",
                 linea,
                 flags=re.IGNORECASE
             )
@@ -925,13 +1142,21 @@ class Ejecutor:
 
             if coincidencia:
 
-                variable = coincidencia.group(1)
+                variable = (
+                    coincidencia.group(1)
+                )
 
-                inicio_expr = coincidencia.group(2)
+                inicio_expr = (
+                    coincidencia.group(2)
+                )
 
-                fin_expr = coincidencia.group(3)
+                fin_expr = (
+                    coincidencia.group(3)
+                )
 
-                paso_expr = coincidencia.group(4)
+                paso_expr = (
+                    coincidencia.group(4)
+                )
 
 
                 inicio_valor = evaluar_expresion(
@@ -1031,11 +1256,15 @@ class Ejecutor:
 
             if coincidencia:
 
-                condicion = coincidencia.group(1)
+                condicion = (
+                    coincidencia.group(1)
+                )
 
 
                 fin_mientras = (
-                    self.buscar_fin_mientras(i)
+                    self.buscar_fin_mientras(
+                        i
+                    )
                 )
 
 
@@ -1073,7 +1302,9 @@ class Ejecutor:
             if mayus == "REPETIR":
 
                 fin_repetir = (
-                    self.buscar_hasta_que(i)
+                    self.buscar_hasta_que(
+                        i
+                    )
                 )
 
 
@@ -1124,6 +1355,10 @@ class Ejecutor:
                 continue
 
 
+            # =================================================
+            # SIGUIENTE
+            # =================================================
+
             i += 1
 
 
@@ -1146,7 +1381,10 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[i].upper()
+            mayus = (
+                self.lineas[i]
+                .upper()
+            )
 
 
             if re.match(
@@ -1208,7 +1446,10 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[i].upper()
+            mayus = (
+                self.lineas[i]
+                .upper()
+            )
 
 
             if mayus.startswith(
@@ -1228,7 +1469,9 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return len(self.lineas) - 1
+        return (
+            len(self.lineas) - 1
+        )
 
 
     # ========================================================
@@ -1248,7 +1491,10 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[i].upper()
+            mayus = (
+                self.lineas[i]
+                .upper()
+            )
 
 
             if mayus.startswith(
@@ -1268,7 +1514,9 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return len(self.lineas) - 1
+        return (
+            len(self.lineas) - 1
+        )
 
 
     # ========================================================
@@ -1280,19 +1528,40 @@ class Ejecutor:
         posicion
     ):
 
+        profundidad = 0
+
+
         for i in range(
             posicion + 1,
             len(self.lineas)
         ):
 
-            if self.lineas[i].upper().startswith(
+            mayus = (
+                self.lineas[i]
+                .upper()
+            )
+
+
+            if mayus == "REPETIR":
+
+                profundidad += 1
+
+
+            if mayus.startswith(
                 "HASTA QUE"
             ):
 
-                return i
+                if profundidad == 0:
+
+                    return i
 
 
-        return len(self.lineas) - 1
+                profundidad -= 1
+
+
+        return (
+            len(self.lineas) - 1
+        )
 
 
 # ============================================================
@@ -1311,9 +1580,14 @@ def ejecutar_pseudocodigo(
 
 
     return {
-        "salidas": ejecutor.salidas,
-        "tabla": ejecutor.tabla_filas,
-        "variables": ejecutor.variables
+        "salidas":
+            ejecutor.salidas,
+
+        "tabla":
+            ejecutor.tabla_filas,
+
+        "variables":
+            ejecutor.variables
     }
 
 
@@ -1325,25 +1599,32 @@ def escapar_mermaid(
     texto
 ):
 
+    texto = str(texto)
+
+
     texto = texto.replace(
         '"',
         "'"
     )
+
 
     texto = texto.replace(
         "[",
         "("
     )
 
+
     texto = texto.replace(
         "]",
         ")"
     )
 
+
     texto = texto.replace(
         "\n",
         "<br/>"
     )
+
 
     return texto
 
@@ -1367,7 +1648,7 @@ def generar_diagrama(
 
 
     # ========================================================
-    # COLORES
+    # ESTILOS
     # ========================================================
 
     mermaid.append(
@@ -1431,9 +1712,9 @@ def generar_diagrama(
         mayus = linea.upper()
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ALGORITMO
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "ALGORITMO"
@@ -1442,18 +1723,18 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # FINALGORITMO
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus == "FINALGORITMO":
 
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # DEFINIR
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "DEFINIR"
@@ -1462,15 +1743,18 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # LEER
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "LEER "
         ):
 
-            variable = linea[5:].strip()
+            variable = (
+                linea[5:].strip()
+            )
+
 
             contador += 1
 
@@ -1497,15 +1781,18 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ESCRIBIR
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "ESCRIBIR"
         ):
 
-            texto = linea[8:].strip()
+            texto = (
+                linea[8:].strip()
+            )
+
 
             texto = escapar_mermaid(
                 f"ESCRIBIR<br/>{texto}"
@@ -1532,9 +1819,9 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # SI
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Si\s+(.+?)\s+Entonces$",
@@ -1545,7 +1832,10 @@ def generar_diagrama(
 
         if coincidencia:
 
-            condicion = coincidencia.group(1)
+            condicion = (
+                coincidencia.group(1)
+            )
+
 
             condicion = escapar_mermaid(
                 condicion
@@ -1579,9 +1869,9 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # SINO
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus in (
             "SINO",
@@ -1590,11 +1880,13 @@ def generar_diagrama(
 
             if pila:
 
-                actual = pila[-1]
+                actual = (
+                    pila[-1]
+                )
 
-                decision = actual[
-                    "nodo"
-                ]
+                decision = (
+                    actual["nodo"]
+                )
 
 
                 contador += 1
@@ -1623,9 +1915,9 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # FIN SI
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus in (
             "FINSI",
@@ -1634,11 +1926,13 @@ def generar_diagrama(
 
             if pila:
 
-                actual = pila.pop()
+                actual = (
+                    pila.pop()
+                )
 
-                decision = actual[
-                    "nodo"
-                ]
+                decision = (
+                    actual["nodo"]
+                )
 
 
                 if actual[
@@ -1654,7 +1948,9 @@ def generar_diagrama(
 
                     contador += 1
 
-                    union = f"n{contador}"
+                    union = (
+                        f"n{contador}"
+                    )
 
 
                     mermaid.append(
@@ -1678,9 +1974,9 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # PARA
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Para\s+(\w+)",
@@ -1691,7 +1987,10 @@ def generar_diagrama(
 
         if coincidencia:
 
-            variable = coincidencia.group(1)
+            variable = (
+                coincidencia.group(1)
+            )
+
 
             contador += 1
 
@@ -1713,15 +2012,17 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # MIENTRAS
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "MIENTRAS "
         ):
 
-            condicion = linea[9:].strip()
+            condicion = (
+                linea[9:].strip()
+            )
 
 
             condicion = re.sub(
@@ -1757,9 +2058,9 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # REPETIR
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus == "REPETIR":
 
@@ -1783,9 +2084,9 @@ def generar_diagrama(
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ASIGNACIÓN
-        # ====================================================
+        # ----------------------------------------------------
 
         if "<-" in linea:
 
@@ -1852,7 +2153,7 @@ def generar_diagrama(
 
 
 # ============================================================
-# API EJERCICIOS - OBTENER
+# API EJERCICIOS - LISTAR
 # ============================================================
 
 @app.route(
@@ -1877,7 +2178,9 @@ def obtener_ejercicios():
     """)
 
 
-    filas = cursor.fetchall()
+    filas = (
+        cursor.fetchall()
+    )
 
 
     cursor.close()
@@ -1887,15 +2190,22 @@ def obtener_ejercicios():
 
     return jsonify([
         {
-            "id": f["id"],
-            "nombre": f["nombre"],
-            "pseudocodigo": f["pseudocodigo"],
-            "fecha": str(
-                f["fecha"]
-            )
+            "id":
+                fila["id"],
+
+            "nombre":
+                fila["nombre"],
+
+            "pseudocodigo":
+                fila["pseudocodigo"],
+
+            "fecha":
+                str(
+                    fila["fecha"]
+                )
         }
 
-        for f in filas
+        for fila in filas
     ])
 
 
@@ -1931,9 +2241,9 @@ def crear_ejercicio():
     cursor = conn.cursor()
 
 
-    # ========================================================
-    # POSTGRES
-    # ========================================================
+    # --------------------------------------------------------
+    # POSTGRESQL
+    # --------------------------------------------------------
 
     if USAR_POSTGRES:
 
@@ -1951,16 +2261,19 @@ def crear_ejercicio():
         )
 
 
-        fila = cursor.fetchone()
-
-        nuevo_id = fila[
-            "id"
-        ]
+        fila = (
+            cursor.fetchone()
+        )
 
 
-    # ========================================================
+        nuevo_id = (
+            fila["id"]
+        )
+
+
+    # --------------------------------------------------------
     # SQLITE
-    # ========================================================
+    # --------------------------------------------------------
 
     else:
 
@@ -1983,7 +2296,6 @@ def crear_ejercicio():
 
 
     conn.commit()
-
 
     cursor.close()
 
@@ -2066,7 +2378,6 @@ def actualizar_ejercicio(id):
 
     conn.commit()
 
-
     cursor.close()
 
     conn.close()
@@ -2115,7 +2426,6 @@ def eliminar_ejercicio(id):
 
 
     conn.commit()
-
 
     cursor.close()
 
@@ -2185,16 +2495,23 @@ def ejecutar():
 
 
         return jsonify({
-            "ok": True,
+            "ok":
+                True,
 
             "salidas":
-                resultado["salidas"],
+                resultado[
+                    "salidas"
+                ],
 
             "tabla":
-                resultado["tabla"],
+                resultado[
+                    "tabla"
+                ],
 
             "variables":
-                resultado["variables"],
+                resultado[
+                    "variables"
+                ],
 
             "entradas":
                 datos.get(
@@ -2204,11 +2521,13 @@ def ejecutar():
         })
 
 
-    except Exception as e:
+    except Exception as error:
 
         return jsonify({
             "ok": False,
-            "error": str(e)
+            "error": str(
+                error
+            )
         }), 400
 
 
@@ -2243,11 +2562,13 @@ def diagrama():
         })
 
 
-    except Exception as e:
+    except Exception as error:
 
         return jsonify({
             "ok": False,
-            "error": str(e)
+            "error": str(
+                error
+            )
         }), 400
 
 
@@ -2264,11 +2585,9 @@ def index():
 
 
 # ============================================================
-# INICIALIZAR TABLAS
+# INICIALIZAR BASE
 #
-# IMPORTANTE:
-# Esto también se ejecuta cuando Gunicorn importa app.py
-# en Render.
+# Esto también funciona cuando Render inicia Gunicorn.
 # ============================================================
 
 init_db()
