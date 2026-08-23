@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Simulador de Pseudocódigo
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+
+</head>
+
+<body>
+
+<div class="app">
+
+    <!-- ================================================= -->
+    <!-- BARRA SUPERIOR -->
+    <!-- ================================================= -->
+
+    <header class="topbar">
+
+        <div class="brand">
+
+            <div class="brand-icon">
+                P
+            </div>
+
+            <div>
+
+                <h1>
+                    Simulador de Pseudocódigo
+                </h1>
+
+                <span>
+                    Editor y ejecutor de algoritmos
+                </span>
+
+            </div>
+
+        </div>
+
+        <div class="top-actions">
+
+            <button
+                id="btnNuevo"
+                class="btn secondary"
+            >
+                + Nuevo ejercicio
+            </button>
+
+            <button
+                id="btnGuardar"
+                class="btn primary"
+            >
+                Guardar
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <!-- ================================================= -->
+    <!-- CONTENIDO -->
+    <!-- ================================================= -->
+
+    <main class="main">
+
+        <!-- ============================================= -->
+        <!-- PANEL IZQUIERDO -->
+        <!-- ============================================= -->
+
+        <section class="panel editor-panel">
+
+            <div class="panel-header">
+
+                <div>
+
+                    <h2>
+                        Pseudocódigo
+                    </h2>
+
+                    <p>
+                        Escribe tu algoritmo
+                    </p>
+
+                </div>
+
+                <input
+                    id="nombreEjercicio"
+                    type="text"
+                    placeholder="Nombre del ejercicio"
+                    value=""
+                >
+
+            </div>
+
+
+            <textarea
+                id="pseudocodigo"
+                spellcheck="false"
+                placeholder="Escribe aquí tu pseudocódigo..."
+            ></textarea>
+
+
+            <div class="editor-actions">
+
+                <button
+                    id="btnEjecutar"
+                    class="btn execute"
+                >
+                    ▶ Ejecutar
+                </button>
+
+                <button
+                    id="btnDiagrama"
+                    class="btn diagram"
+                >
+                    Generar diagrama
+                </button>
+
+                <button
+                    id="btnLimpiar"
+                    class="btn secondary"
+                >
+                    Limpiar
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <!-- ============================================= -->
+        <!-- PANEL DERECHO -->
+        <!-- ============================================= -->
+
+        <section class="right-column">
+
+            <!-- ENTRADAS -->
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Entradas
+                        </h2>
+
+                        <p>
+                            Variables solicitadas por Leer
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div id="entradas" class="inputs-area">
+
+                    <div class="empty">
+                        No hay variables de entrada.
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- RESULTADOS -->
+
+            <div class="panel">
+
+                <div class="panel-header">
+
+                    <div>
+
+                        <h2>
+                            Resultados
+                        </h2>
+
+                        <p>
+                            Salida del algoritmo
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <div
+                    id="resultados"
+                    class="results"
+                >
+                    <div class="empty">
+                        Ejecuta el algoritmo para ver los resultados.
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- ================================================= -->
+    <!-- DIAGRAMA -->
+    <!-- ================================================= -->
+
+    <section class="panel diagram-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <h2>
+                    Diagrama de flujo
+                </h2>
+
+                <p>
+                    Representación gráfica del algoritmo
+                </p>
+
+            </div>
+
+        </div>
+
+        <div
+            id="diagrama"
+            class="diagram-container"
+        >
+
+            <div class="empty">
+                El diagrama aparecerá aquí.
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ================================================= -->
+    <!-- EJERCICIOS GUARDADOS -->
+    <!-- ================================================= -->
+
+    <section class="panel saved-panel">
+
+        <div class="panel-header">
+
+            <div>
+
+                <h2>
+                    Ejercicios guardados
+                </h2>
+
+                <p>
+                    Guarda, edita o elimina tus ejercicios.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div
+            id="listaEjercicios"
+            class="exercise-list"
+        >
+
+            <div class="empty">
+                No hay ejercicios guardados.
+            </div>
+
+        </div>
+
+    </section>
+
+</div>
+
+
+<!-- ===================================================== -->
+<!-- JAVASCRIPT -->
+<!-- ===================================================== -->
+
+<script
+    src="{{ url_for('static', filename='app.js') }}"
+></script>
+
+</body>
+
+</html>
