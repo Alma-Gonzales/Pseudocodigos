@@ -2,9 +2,9 @@
 
 title Simulador de Pseudocodigo - Crear EXE
 
-REM ============================================================
-REM IR AUTOMATICAMENTE A LA CARPETA DONDE ESTA ESTE .BAT
-REM ============================================================
+REM  ==============================================
+REM  Codigo para hacer un archivo EXE
+REM ==============================================
 
 cd /d "%~dp0"
 
@@ -19,9 +19,9 @@ echo Carpeta del proyecto:
 echo %cd%
 echo.
 
-REM ============================================================
-REM VERIFICAR APP.PY
-REM ============================================================
+REM 
+REM 
+REM 
 
 echo [1/4] Verificando archivos...
 echo.
@@ -46,9 +46,9 @@ if not exist "app.py" (
 echo OK: app.py encontrado.
 echo.
 
-REM ============================================================
-REM VERIFICAR REQUIREMENTS
-REM ============================================================
+REM 
+REM 
+REM 
 
 if not exist "requirements.txt" (
     echo.
@@ -67,9 +67,9 @@ if not exist "requirements.txt" (
 echo OK: requirements.txt encontrado.
 echo.
 
-REM ============================================================
-REM INSTALAR DEPENDENCIAS
-REM ============================================================
+REM 
+REM 
+REM 
 
 echo [2/4] Instalando dependencias...
 echo.
@@ -90,9 +90,9 @@ echo.
 echo Dependencias instaladas correctamente.
 echo.
 
-REM ============================================================
-REM LIMPIAR COMPILACIONES ANTERIORES
-REM ============================================================
+REM 
+REM 
+REM 
 
 echo [3/4] Limpiando compilaciones anteriores...
 echo.
@@ -112,9 +112,9 @@ if exist "SimuladorPseudocodigo.spec" (
 echo Limpieza terminada.
 echo.
 
-REM ============================================================
-REM CREAR EXE
-REM ============================================================
+REM 
+REM 
+REM 
 
 echo [4/4] Creando EXE...
 echo.
@@ -137,9 +137,9 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM ============================================================
-REM RESULTADO
-REM ============================================================
+REM 
+REM 
+REM 
 
 echo.
 echo ==============================================

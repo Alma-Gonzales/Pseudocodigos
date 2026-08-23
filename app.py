@@ -9,17 +9,17 @@ import threading
 
 
 # ============================================================
-# CONFIGURACIÓN
+# Configuración para convertir el pseudocodigo a python y C++
 # ============================================================
 
 app = Flask(__name__)
 
-# Módulo separado para convertir pseudocódigo a Python y C++
 app.register_blueprint(traductor_bp)
 
 
 # ============================================================
-# RUTAS
+# Ubicación de proyecto para la cracion de carpera de Datos y 
+# creacion de archivo .db
 # ============================================================
 
 BASE_DIR = os.path.dirname(
@@ -44,12 +44,8 @@ SQLITE_DB = os.path.join(
 
 # ============================================================
 # BASE DE DATOS
-#
-# LOCAL:
-#   SQLite
-#
-# RENDER:
-#   Supabase PostgreSQL mediante DATABASE_URL
+# Utiliza dos bases una local que es SQLite y una base de datos 
+# Para el Render que utiliza PostgregSQL.
 # ============================================================
 
 DATABASE_URL = os.environ.get(
@@ -63,13 +59,13 @@ USAR_POSTGRES = bool(
 
 
 # ============================================================
-# CONEXIÓN A BASE DE DATOS
+# Se realiza la conexion a ambas base de datos. 
 # ============================================================
 
 def get_db():
 
     # --------------------------------------------------------
-    # POSTGRESQL / SUPABASE
+    # Base de datos de POSTGREGSQL EN SUPABASE
     # --------------------------------------------------------
 
     if USAR_POSTGRES:
@@ -87,7 +83,7 @@ def get_db():
 
 
     # --------------------------------------------------------
-    # SQLITE LOCAL
+    # Base de datos SQLITE Local
     # --------------------------------------------------------
 
     conn = sqlite3.connect(
@@ -100,7 +96,7 @@ def get_db():
 
 
 # ============================================================
-# INICIALIZAR BASE DE DATOS
+# Se le da inicio a las base de datos.
 # ============================================================
 
 def init_db():
@@ -111,7 +107,7 @@ def init_db():
 
 
     # --------------------------------------------------------
-    # POSTGRESQL
+    # Permite iniciarse la base en PostgregSQL.
     # --------------------------------------------------------
 
     if USAR_POSTGRES:
@@ -127,7 +123,7 @@ def init_db():
 
 
     # --------------------------------------------------------
-    # SQLITE
+    # Inicia el proceso en la base de datos Local.
     # --------------------------------------------------------
 
     else:
@@ -150,7 +146,8 @@ def init_db():
 
 
 # ============================================================
-# FUNCIONES AUXILIARES
+# Funiciones para poder elimanacion de tabulaciones innecesarias
+# y adapta  los operadores de PSeInt
 # ============================================================
 
 def limpiar_linea(linea):
@@ -174,18 +171,13 @@ def quitar_comentarios(linea):
     return linea
 
 
-# ============================================================
-# NORMALIZAR OPERADORES
-# ============================================================
-
 def normalizar_operadores(texto):
 
-    # Diferente
+    # operador de Diferencias
     texto = texto.replace(
         "<>",
         "!="
     )
-
 
     # Operador lógico Y
     texto = re.sub(
@@ -195,7 +187,6 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
     # Operador lógico O
     texto = re.sub(
         r"\bO\b",
@@ -203,7 +194,6 @@ def normalizar_operadores(texto):
         texto,
         flags=re.IGNORECASE
     )
-
 
     # Operador lógico NO
     texto = re.sub(
@@ -213,15 +203,14 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
-    # Potencia
+    # Operador de Potencia
     texto = texto.replace(
         "^",
         "**"
     )
 
 
-    # Verdadero
+    # Operador de Verdadero
     texto = re.sub(
         r"\bVerdadero\b",
         "True",
@@ -230,7 +219,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # Falso
+    # Operador de Falso
     texto = re.sub(
         r"\bFalso\b",
         "False",
@@ -239,7 +228,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # Igualdad
+    # operador de Igualdades
     texto = re.sub(
         r"(?<![<>=!])=(?!=)",
         "==",
@@ -251,7 +240,8 @@ def normalizar_operadores(texto):
 
 
 # ============================================================
-# DETECTAR VARIABLES DE ENTRADA
+# Detecta las variables de entrada que se estan solicitando 
+# En el Pseudocodigo
 # ============================================================
 
 def detectar_variables_entrada(
@@ -311,7 +301,11 @@ def detectar_variables_entrada(
 
 
 # ============================================================
-# CONVERTIR VALOR
+# Detecta los datos ingresados y los transforma en valores:
+# Decimales, enteros, boolean, y textos.
+# De esa forma se resuelven las operaciones, utilizando los 
+# valores de las variable y de esa forma se evaluan 
+# las condiciones utilizadas. 
 # ============================================================
 
 def convertir_valor(valor):
@@ -331,9 +325,6 @@ def convertir_valor(valor):
         return ""
 
 
-    # --------------------------------------------------------
-    # BOOLEANOS
-    # --------------------------------------------------------
 
     if valor.lower() == "verdadero":
 
@@ -345,10 +336,6 @@ def convertir_valor(valor):
         return False
 
 
-    # --------------------------------------------------------
-    # ENTERO
-    # --------------------------------------------------------
-
     try:
 
         return int(
@@ -358,11 +345,6 @@ def convertir_valor(valor):
     except ValueError:
 
         pass
-
-
-    # --------------------------------------------------------
-    # REAL
-    # --------------------------------------------------------
 
     try:
 
@@ -375,16 +357,8 @@ def convertir_valor(valor):
         pass
 
 
-    # --------------------------------------------------------
-    # TEXTO
-    # --------------------------------------------------------
-
     return valor
 
-
-# ============================================================
-# EVALUAR EXPRESIONES
-# ============================================================
 
 def evaluar_expresion(
     expresion,
@@ -393,10 +367,6 @@ def evaluar_expresion(
 
     expresion = expresion.strip()
 
-
-    # --------------------------------------------------------
-    # TEXTO ENTRE COMILLAS
-    # --------------------------------------------------------
 
     if (
         len(expresion) >= 2
@@ -407,14 +377,6 @@ def evaluar_expresion(
         return expresion[1:-1]
 
 
-    # ========================================================
-    # IMPORTANTE
-    #
-    # Las variables se sustituyen ANTES de normalizar Y/O/NO.
-    #
-    # Esto evita que una variable llamada "y" se convierta
-    # accidentalmente en "and".
-    # ========================================================
 
     nombres = sorted(
         variables.keys(),
@@ -437,18 +399,10 @@ def evaluar_expresion(
         )
 
 
-    # --------------------------------------------------------
-    # OPERADORES
-    # --------------------------------------------------------
-
     expresion = normalizar_operadores(
         expresion
     )
 
-
-    # --------------------------------------------------------
-    # RAÍZ CUADRADA
-    # --------------------------------------------------------
 
     expresion = re.sub(
         r"\bRC\((.*?)\)",
@@ -457,10 +411,6 @@ def evaluar_expresion(
         flags=re.IGNORECASE
     )
 
-
-    # --------------------------------------------------------
-    # SEGURIDAD
-    # --------------------------------------------------------
 
     permitidos = re.fullmatch(
         r"[0-9A-Za-z_+\-*/().%, '<>=!&|]*",
@@ -472,10 +422,6 @@ def evaluar_expresion(
 
         return expresion
 
-
-    # --------------------------------------------------------
-    # EVALUAR
-    # --------------------------------------------------------
 
     try:
 
@@ -493,7 +439,8 @@ def evaluar_expresion(
 
 
 # ============================================================
-# EVALUAR CONDICIONES
+# Se Evaluan las condiciones identifica que es lo que esta 
+# solicitando el pseudocodigo.
 # ============================================================
 
 def evaluar_condicion(
@@ -503,10 +450,6 @@ def evaluar_condicion(
 
     condicion = condicion.strip()
 
-
-    # --------------------------------------------------------
-    # VARIABLES PRIMERO
-    # --------------------------------------------------------
 
     nombres = sorted(
         variables.keys(),
@@ -528,10 +471,6 @@ def evaluar_condicion(
             condicion
         )
 
-
-    # --------------------------------------------------------
-    # OPERADORES DESPUÉS
-    # --------------------------------------------------------
 
     condicion = normalizar_operadores(
         condicion
@@ -559,7 +498,8 @@ def evaluar_condicion(
 
 
 # ============================================================
-# DIVIDIR ESCRIBIR
+# Reconoce las Instrucciones del Pseudocodigo, si solicita 
+# Ingresar valores, o solo lee una instruccion. 
 # ============================================================
 
 def dividir_escribir(
@@ -628,7 +568,8 @@ def dividir_escribir(
 
 
 # ============================================================
-# EJECUTOR DE PSEUDOCÓDIGO
+# Al presionar el boton de ejecutar, lee el pseudocodigo, y regresa
+# las respuestas de los datos solicitados. 
 # ============================================================
 
 class Ejecutor:
@@ -639,9 +580,6 @@ class Ejecutor:
         entradas
     ):
 
-        # ----------------------------------------------------
-        # LÍNEAS
-        # ----------------------------------------------------
 
         self.lineas = []
 
@@ -664,9 +602,6 @@ class Ejecutor:
                 )
 
 
-        # ----------------------------------------------------
-        # VARIABLES
-        # ----------------------------------------------------
 
         self.variables = {}
 
@@ -680,28 +615,16 @@ class Ejecutor:
             )
 
 
-        # ----------------------------------------------------
-        # SALIDA
-        # ----------------------------------------------------
-
         self.salidas = []
 
         self.tabla_filas = []
 
-
-        # ----------------------------------------------------
-        # EJECUTAR
-        # ----------------------------------------------------
 
         self.ejecutar_bloque(
             0,
             len(self.lineas)
         )
 
-
-    # ========================================================
-    # EJECUTAR BLOQUE
-    # ========================================================
 
     def ejecutar_bloque(
         self,
@@ -719,10 +642,7 @@ class Ejecutor:
             mayus = linea.upper()
 
 
-            # =================================================
-            # ALGORITMO
-            # =================================================
-
+    
             if mayus.startswith(
                 "ALGORITMO"
             ):
@@ -732,20 +652,12 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # FINALGORITMO
-            # =================================================
-
             if mayus == "FINALGORITMO":
 
                 i += 1
 
                 continue
 
-
-            # =================================================
-            # DEFINIR
-            # =================================================
 
             if mayus.startswith(
                 "DEFINIR"
@@ -755,27 +667,6 @@ class Ejecutor:
 
                 continue
 
-
-            # =================================================
-            # LEER
-            #
-            # REGLA GENERAL:
-            #
-            # Escribir "Ingrese algo:"
-            # Leer variable
-            #
-            # Produce:
-            #
-            # Ingrese algo: VALOR
-            #
-            # Y si no existe Escribir antes:
-            #
-            # Leer variable
-            #
-            # Produce:
-            #
-            # variable = VALOR
-            # =================================================
 
             coincidencia = re.match(
                 r"^Leer\s+(.+)$",
@@ -818,10 +709,6 @@ class Ejecutor:
                         ] = ""
 
 
-                # =================================================
-                # COMPROBAR SI JUSTO ANTES HABÍA UN ESCRIBIR
-                # =================================================
-
                 anterior_es_escribir = False
 
 
@@ -842,12 +729,6 @@ class Ejecutor:
                         )
                     )
 
-
-                # =================================================
-                # SI HAY ESCRIBIR ANTES:
-                #
-                # Agregar el valor al mensaje anterior.
-                # =================================================
 
                 if (
                     anterior_es_escribir
@@ -882,7 +763,6 @@ class Ejecutor:
 
                     if texto_valores:
 
-                        # Agregar espacio solo si hace falta
                         if (
                             texto_anterior
                             and not texto_anterior.endswith(
@@ -902,14 +782,6 @@ class Ejecutor:
                             + texto_valores
                         )
 
-
-                # =================================================
-                # SI NO HAY ESCRIBIR ANTES:
-                #
-                # Mostrar automáticamente:
-                #
-                # variable = valor
-                # =================================================
 
                 else:
 
@@ -931,10 +803,6 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # ESCRIBIR
-            # =================================================
-
             coincidencia = re.match(
                 r"^Escribir\s*(.*)$",
                 linea,
@@ -948,10 +816,6 @@ class Ejecutor:
                     coincidencia.group(1)
                 )
 
-
-                # ------------------------------------------------
-                # ESCRIBIR VACÍO
-                # ------------------------------------------------
 
                 if contenido.strip() == "":
 
@@ -985,16 +849,6 @@ class Ejecutor:
                     )
 
 
-                # ------------------------------------------------
-                # UNIR SIN AGREGAR TEXTO EXTRA
-                #
-                # Escribir "Resultado: ", suma
-                #
-                # Resultado:
-                #
-                # Resultado: 15
-                # ------------------------------------------------
-
                 texto_completo = "".join(
                     valores
                 )
@@ -1004,10 +858,6 @@ class Ejecutor:
                     texto_completo
                 )
 
-
-                # ------------------------------------------------
-                # TABLAS
-                # ------------------------------------------------
 
                 if "|" in texto_completo:
 
@@ -1027,9 +877,6 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # ASIGNACIÓN
-            # =================================================
 
             coincidencia = re.match(
                 r"^([A-Za-z_][A-Za-z0-9_]*)\s*<-\s*(.+)$",
@@ -1064,9 +911,6 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # SI
-            # =================================================
 
             coincidencia = re.match(
                 r"^Si\s+(.+?)\s+Entonces$",
@@ -1126,9 +970,6 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # PARA
-            # =================================================
 
             coincidencia = re.match(
                 r"^Para\s+(\w+)\s*<-\s*(.+?)"
@@ -1243,10 +1084,6 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # MIENTRAS
-            # =================================================
-
             coincidencia = re.match(
                 r"^Mientras\s+(.+?)\s+Hacer$",
                 linea,
@@ -1294,10 +1131,6 @@ class Ejecutor:
 
                 continue
 
-
-            # =================================================
-            # REPETIR
-            # =================================================
 
             if mayus == "REPETIR":
 
@@ -1355,16 +1188,8 @@ class Ejecutor:
                 continue
 
 
-            # =================================================
-            # SIGUIENTE
-            # =================================================
-
             i += 1
 
-
-    # ========================================================
-    # BUSCAR FIN SI
-    # ========================================================
 
     def buscar_fin_si(
         self,
@@ -1429,9 +1254,6 @@ class Ejecutor:
         )
 
 
-    # ========================================================
-    # BUSCAR FIN PARA
-    # ========================================================
 
     def buscar_fin_para(
         self,
@@ -1474,9 +1296,6 @@ class Ejecutor:
         )
 
 
-    # ========================================================
-    # BUSCAR FIN MIENTRAS
-    # ========================================================
 
     def buscar_fin_mientras(
         self,
@@ -1519,9 +1338,6 @@ class Ejecutor:
         )
 
 
-    # ========================================================
-    # BUSCAR HASTA QUE
-    # ========================================================
 
     def buscar_hasta_que(
         self,
@@ -1592,7 +1408,8 @@ def ejecutar_pseudocodigo(
 
 
 # ============================================================
-# ESCAPAR TEXTO PARA MERMAID
+# Se detecta las instrucciones escritas del pseudoxodigo y 
+# las transforma en diagrama
 # ============================================================
 
 def escapar_mermaid(
@@ -1630,7 +1447,7 @@ def escapar_mermaid(
 
 
 # ============================================================
-# GENERAR DIAGRAMA
+# Una vez se detecte el diagrama y se meustra el diagrama. 
 # ============================================================
 
 def generar_diagrama(
@@ -1646,10 +1463,6 @@ def generar_diagrama(
         "flowchart TD"
     )
 
-
-    # ========================================================
-    # ESTILOS
-    # ========================================================
 
     mermaid.append(
         "classDef inicio fill:#2563eb,stroke:#1d4ed8,color:#ffffff,stroke-width:2px"
@@ -1712,10 +1525,6 @@ def generar_diagrama(
         mayus = linea.upper()
 
 
-        # ----------------------------------------------------
-        # ALGORITMO
-        # ----------------------------------------------------
-
         if mayus.startswith(
             "ALGORITMO"
         ):
@@ -1723,18 +1532,10 @@ def generar_diagrama(
             continue
 
 
-        # ----------------------------------------------------
-        # FINALGORITMO
-        # ----------------------------------------------------
-
         if mayus == "FINALGORITMO":
 
             continue
 
-
-        # ----------------------------------------------------
-        # DEFINIR
-        # ----------------------------------------------------
 
         if mayus.startswith(
             "DEFINIR"
@@ -1742,10 +1543,6 @@ def generar_diagrama(
 
             continue
 
-
-        # ----------------------------------------------------
-        # LEER
-        # ----------------------------------------------------
 
         if mayus.startswith(
             "LEER "
@@ -1781,9 +1578,6 @@ def generar_diagrama(
             continue
 
 
-        # ----------------------------------------------------
-        # ESCRIBIR
-        # ----------------------------------------------------
 
         if mayus.startswith(
             "ESCRIBIR"
@@ -1818,10 +1612,6 @@ def generar_diagrama(
 
             continue
 
-
-        # ----------------------------------------------------
-        # SI
-        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Si\s+(.+?)\s+Entonces$",
@@ -1869,10 +1659,6 @@ def generar_diagrama(
             continue
 
 
-        # ----------------------------------------------------
-        # SINO
-        # ----------------------------------------------------
-
         if mayus in (
             "SINO",
             "SI NO"
@@ -1914,10 +1700,6 @@ def generar_diagrama(
 
             continue
 
-
-        # ----------------------------------------------------
-        # FIN SI
-        # ----------------------------------------------------
 
         if mayus in (
             "FINSI",
@@ -1974,10 +1756,6 @@ def generar_diagrama(
             continue
 
 
-        # ----------------------------------------------------
-        # PARA
-        # ----------------------------------------------------
-
         coincidencia = re.match(
             r"^Para\s+(\w+)",
             linea,
@@ -2011,10 +1789,6 @@ def generar_diagrama(
 
             continue
 
-
-        # ----------------------------------------------------
-        # MIENTRAS
-        # ----------------------------------------------------
 
         if mayus.startswith(
             "MIENTRAS "
@@ -2058,10 +1832,6 @@ def generar_diagrama(
             continue
 
 
-        # ----------------------------------------------------
-        # REPETIR
-        # ----------------------------------------------------
-
         if mayus == "REPETIR":
 
             contador += 1
@@ -2083,10 +1853,6 @@ def generar_diagrama(
 
             continue
 
-
-        # ----------------------------------------------------
-        # ASIGNACIÓN
-        # ----------------------------------------------------
 
         if "<-" in linea:
 
@@ -2128,10 +1894,6 @@ def generar_diagrama(
             continue
 
 
-    # ========================================================
-    # FIN
-    # ========================================================
-
     contador += 1
 
     fin = f"n{contador}"
@@ -2153,7 +1915,8 @@ def generar_diagrama(
 
 
 # ============================================================
-# API EJERCICIOS - LISTAR
+# API Ejercicios 
+# se enlista los ejercicio guardados 
 # ============================================================
 
 @app.route(
@@ -2209,9 +1972,6 @@ def obtener_ejercicios():
     ])
 
 
-# ============================================================
-# API EJERCICIOS - CREAR
-# ============================================================
 
 @app.route(
     "/api/ejercicios",
@@ -2241,9 +2001,6 @@ def crear_ejercicio():
     cursor = conn.cursor()
 
 
-    # --------------------------------------------------------
-    # POSTGRESQL
-    # --------------------------------------------------------
 
     if USAR_POSTGRES:
 
@@ -2271,9 +2028,6 @@ def crear_ejercicio():
         )
 
 
-    # --------------------------------------------------------
-    # SQLITE
-    # --------------------------------------------------------
 
     else:
 
@@ -2309,7 +2063,8 @@ def crear_ejercicio():
 
 
 # ============================================================
-# API EJERCICIOS - ACTUALIZAR
+# API Ejercicio
+# Si se edita algun ejercicio se guarda la actualizacion del mismo.  
 # ============================================================
 
 @app.route(
@@ -2389,7 +2144,8 @@ def actualizar_ejercicio(id):
 
 
 # ============================================================
-# API EJERCICIOS - ELIMINAR
+# API Ejercicio
+# Permite eliminar los ejercicios. 
 # ============================================================
 
 @app.route(
@@ -2437,9 +2193,6 @@ def eliminar_ejercicio(id):
     })
 
 
-# ============================================================
-# API ENTRADAS
-# ============================================================
 
 @app.route(
     "/api/entradas",
@@ -2465,9 +2218,6 @@ def entradas():
     })
 
 
-# ============================================================
-# API EJECUTAR
-# ============================================================
 
 @app.route(
     "/api/ejecutar",
@@ -2532,7 +2282,8 @@ def ejecutar():
 
 
 # ============================================================
-# API DIAGRAMA
+# API Diagrama
+# Permite que se ejecuten los diagramas
 # ============================================================
 
 @app.route(
@@ -2572,10 +2323,6 @@ def diagrama():
         }), 400
 
 
-# ============================================================
-# PÁGINA PRINCIPAL
-# ============================================================
-
 @app.route("/")
 def index():
 
@@ -2584,18 +2331,8 @@ def index():
     )
 
 
-# ============================================================
-# INICIALIZAR BASE
-#
-# Esto también funciona cuando Render inicia Gunicorn.
-# ============================================================
-
 init_db()
 
-
-# ============================================================
-# ABRIR NAVEGADOR LOCAL
-# ============================================================
 
 def abrir_navegador():
 
@@ -2604,9 +2341,6 @@ def abrir_navegador():
     )
 
 
-# ============================================================
-# EJECUTAR LOCALMENTE
-# ============================================================
 
 if __name__ == "__main__":
 

@@ -1,3 +1,7 @@
 Flask==3.1.2
 gunicorn
 psycopg[binary]
+
+
+#Son los requerimeintos que se necesitan para que funcione en linea y de manera local. 
+
