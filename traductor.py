@@ -2,6 +2,10 @@ from flask import Blueprint, request, jsonify
 import re
 
 
+# ============================================================
+# BLUEPRINT
+# ============================================================
+
 traductor_bp = Blueprint(
     "traductor",
     __name__
@@ -45,11 +49,12 @@ def dividir_argumentos(texto):
         if not dentro_comillas:
 
             if caracter == "(":
+
                 profundidad += 1
 
             elif caracter == ")":
-                profundidad -= 1
 
+                profundidad -= 1
 
             elif (
                 caracter == ","
@@ -106,6 +111,7 @@ def normalizar_tipo(tipo):
     if tipo in (
         "cadena",
         "caracter",
+        "carácter",
         "texto"
     ):
 
@@ -125,20 +131,100 @@ def normalizar_tipo(tipo):
 
 
 # ============================================================
+# PROTEGER VARIABLES
+#
+# Evita que una variable llamada "y" se convierta
+# accidentalmente en "and" o "&&".
+# ============================================================
+
+def proteger_variables(texto, variables):
+
+    reemplazos = {}
+
+    contador = 0
+
+
+    for variable in sorted(
+        variables,
+        key=len,
+        reverse=True
+    ):
+
+        patron = (
+            rf"\b{re.escape(variable)}\b"
+        )
+
+
+        marcador = (
+            f"__VAR_{contador}__"
+        )
+
+
+        nuevo_texto, cantidad = re.subn(
+            patron,
+            marcador,
+            texto
+        )
+
+
+        if cantidad > 0:
+
+            texto = nuevo_texto
+
+            reemplazos[
+                marcador
+            ] = variable
+
+            contador += 1
+
+
+    return texto, reemplazos
+
+
+def restaurar_variables(
+    texto,
+    reemplazos
+):
+
+    for marcador, variable in reemplazos.items():
+
+        texto = texto.replace(
+            marcador,
+            variable
+        )
+
+
+    return texto
+
+
+# ============================================================
 # EXPRESIONES PYTHON
 # ============================================================
 
-def expresion_python(texto):
+def expresion_python(
+    texto,
+    variables=None
+):
+
+    variables = variables or set()
 
     texto = texto.strip()
 
 
+    texto, protegidas = proteger_variables(
+        texto,
+        variables
+    )
+
+
+    # Diferente
     texto = texto.replace(
         "<>",
         "!="
     )
 
 
+    # Lógicos
     texto = re.sub(
         r"\bY\b",
         "and",
@@ -163,6 +249,7 @@ def expresion_python(texto):
     )
 
 
+    # Booleanos
     texto = re.sub(
         r"\bVerdadero\b",
         "True",
@@ -179,6 +266,7 @@ def expresion_python(texto):
     )
 
 
+    # MOD
     texto = re.sub(
         r"\bMOD\b",
         "%",
@@ -187,12 +275,14 @@ def expresion_python(texto):
     )
 
 
+    # Potencia
     texto = texto.replace(
         "^",
         "**"
     )
 
 
+    # Raíz cuadrada
     texto = re.sub(
         r"\bRC\s*\((.*?)\)",
         r"math.sqrt(\1)",
@@ -201,10 +291,17 @@ def expresion_python(texto):
     )
 
 
+    # Igualdad
     texto = re.sub(
         r"(?<![<>=!])=(?!=)",
         "==",
         texto
+    )
+
+
+    texto = restaurar_variables(
+        texto,
+        protegidas
     )
 
 
@@ -215,9 +312,20 @@ def expresion_python(texto):
 # EXPRESIONES C++
 # ============================================================
 
-def expresion_cpp(texto):
+def expresion_cpp(
+    texto,
+    variables=None
+):
+
+    variables = variables or set()
 
     texto = texto.strip()
+
+
+    texto, protegidas = proteger_variables(
+        texto,
+        variables
+    )
 
 
     texto = texto.replace(
@@ -289,18 +397,28 @@ def expresion_cpp(texto):
     )
 
 
-    # Potencias simples:
-    # x ^ 2
-    # a ^ b
+    # --------------------------------------------------------
+    # POTENCIAS SIMPLES
+    # --------------------------------------------------------
 
     patron_potencia = re.compile(
-        r"([A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?)"
+        r"("
+        r"__VAR_\d+__"
+        r"|[A-Za-z_][A-Za-z0-9_]*"
+        r"|\d+(?:\.\d+)?"
+        r")"
         r"\s*\^\s*"
-        r"([A-Za-z_][A-Za-z0-9_]*|\d+(?:\.\d+)?)"
+        r"("
+        r"__VAR_\d+__"
+        r"|[A-Za-z_][A-Za-z0-9_]*"
+        r"|\d+(?:\.\d+)?"
+        r")"
     )
 
 
-    while patron_potencia.search(texto):
+    while patron_potencia.search(
+        texto
+    ):
 
         texto = patron_potencia.sub(
             r"pow(\1, \2)",
@@ -308,43 +426,116 @@ def expresion_cpp(texto):
         )
 
 
+    texto = restaurar_variables(
+        texto,
+        protegidas
+    )
+
+
     return texto
 
 
 # ============================================================
-# GENERAR PYTHON
+# CONVERTIR VALOR A PYTHON
 # ============================================================
 
-def generar_python(pseudocodigo):
+def valor_python(
+    valor,
+    tipo
+):
 
-    lineas_originales = (
-        pseudocodigo.splitlines()
-    )
-
-    lineas = []
+    valor = str(
+        valor
+    ).strip()
 
 
-    for linea in lineas_originales:
+    if tipo == "cadena":
 
-        linea = quitar_comentarios(
-            linea
+        return repr(
+            valor
         )
 
-        if linea:
 
-            lineas.append(
-                linea
+    if tipo == "logico":
+
+        return (
+            "True"
+            if valor.lower() in (
+                "verdadero",
+                "true",
+                "1",
+                "si",
+                "sí"
             )
+            else "False"
+        )
 
+
+    return valor
+
+
+# ============================================================
+# CONVERTIR VALOR A C++
+# ============================================================
+
+def valor_cpp(
+    valor,
+    tipo
+):
+
+    valor = str(
+        valor
+    ).strip()
+
+
+    if tipo == "cadena":
+
+        valor = (
+            valor
+            .replace(
+                "\\",
+                "\\\\"
+            )
+            .replace(
+                '"',
+                '\\"'
+            )
+        )
+
+
+        return (
+            '"'
+            + valor
+            + '"'
+        )
+
+
+    if tipo == "logico":
+
+        return (
+            "true"
+            if valor.lower() in (
+                "verdadero",
+                "true",
+                "1",
+                "si",
+                "sí"
+            )
+            else "false"
+        )
+
+
+    return valor
+
+
+# ============================================================
+# ANALIZAR VARIABLES
+# ============================================================
+
+def obtener_tipos(lineas):
 
     tipos = {}
 
-    necesita_para = False
-
-
-    # ========================================================
-    # PRIMER RECORRIDO - TIPOS
-    # ========================================================
 
     for linea in lineas:
 
@@ -357,40 +548,96 @@ def generar_python(pseudocodigo):
 
         if coincidencia:
 
-            variables = coincidencia.group(1)
+            variables = (
+                coincidencia.group(1)
+            )
+
 
             tipo = normalizar_tipo(
                 coincidencia.group(2)
             )
 
 
-            for variable in variables.split(","):
+            for variable in variables.split(
+                ","
+            ):
 
-                variable = variable.strip()
-
-                tipos[
-                    variable
-                ] = tipo
+                variable = (
+                    variable.strip()
+                )
 
 
-        if re.match(
+                if variable:
+
+                    tipos[
+                        variable
+                    ] = tipo
+
+
+    return tipos
+
+
+# ============================================================
+# GENERAR PYTHON
+# ============================================================
+
+def generar_python(
+    pseudocodigo,
+    entradas=None
+):
+
+    entradas = entradas or {}
+
+
+    # --------------------------------------------------------
+    # LIMPIAR LÍNEAS
+    # --------------------------------------------------------
+
+    lineas = []
+
+
+    for linea in pseudocodigo.splitlines():
+
+        linea = quitar_comentarios(
+            linea
+        )
+
+
+        if linea:
+
+            lineas.append(
+                linea
+            )
+
+
+    tipos = obtener_tipos(
+        lineas
+    )
+
+    nombres_variables = set(
+        tipos.keys()
+    )
+
+
+    necesita_para = any(
+        re.match(
             r"^Para\s+",
             linea,
             flags=re.IGNORECASE
-        ):
-
-            necesita_para = True
-
-
-    resultado = []
-
-
-    resultado.append(
-        "import math"
+        )
+        for linea in lineas
     )
 
-    resultado.append("")
 
+    resultado = [
+        "import math",
+        ""
+    ]
+
+
+    # ========================================================
+    # RANGE INCLUSIVO
+    # ========================================================
 
     if necesita_para:
 
@@ -419,14 +666,18 @@ def generar_python(pseudocodigo):
         )
 
 
+    # ========================================================
+    # PROCESAR
+    # ========================================================
+
     for linea in lineas:
 
         mayus = linea.upper()
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ALGORITMO
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "ALGORITMO"
@@ -440,9 +691,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # DEFINIR
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Definir\s+(.+?)\s+Como\s+(.+)$",
@@ -453,7 +704,10 @@ def generar_python(pseudocodigo):
 
         if coincidencia:
 
-            variables = coincidencia.group(1)
+            variables = (
+                coincidencia.group(1)
+            )
+
 
             tipo = normalizar_tipo(
                 coincidencia.group(2)
@@ -468,9 +722,18 @@ def generar_python(pseudocodigo):
             }
 
 
-            for variable in variables.split(","):
+            for variable in variables.split(
+                ","
+            ):
 
-                variable = variable.strip()
+                variable = (
+                    variable.strip()
+                )
+
+
+                if not variable:
+
+                    continue
 
 
                 agregar(
@@ -482,9 +745,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # LEER
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Leer\s+(.+)$",
@@ -495,15 +758,17 @@ def generar_python(pseudocodigo):
 
         if coincidencia:
 
-            variables = (
-                coincidencia.group(1)
+            variables = [
+                variable.strip()
+                for variable in
+                coincidencia
+                .group(1)
                 .split(",")
-            )
+                if variable.strip()
+            ]
 
 
             for variable in variables:
-
-                variable = variable.strip()
 
                 tipo = tipos.get(
                     variable,
@@ -511,7 +776,37 @@ def generar_python(pseudocodigo):
                 )
 
 
-                if tipo == "entero":
+                # ============================================
+                # SI EL USUARIO YA EJECUTÓ CON UN VALOR
+                # ============================================
+
+                if (
+                    variable in entradas
+                    and str(
+                        entradas[
+                            variable
+                        ]
+                    ).strip() != ""
+                ):
+
+                    valor = valor_python(
+                        entradas[
+                            variable
+                        ],
+                        tipo
+                    )
+
+
+                    agregar(
+                        f"{variable} = {valor}"
+                    )
+
+
+                # ============================================
+                # SI NO HAY VALOR, MANTENER INPUT NORMAL
+                # ============================================
+
+                elif tipo == "entero":
 
                     agregar(
                         f"{variable} = int(input())"
@@ -530,7 +825,7 @@ def generar_python(pseudocodigo):
                     agregar(
                         f"{variable} = "
                         f"input().strip().lower() "
-                        f"in ('verdadero', 'true', '1')"
+                        f"in ('verdadero', 'true', '1', 'si', 'sí')"
                     )
 
 
@@ -544,9 +839,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ESCRIBIR
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Escribir\s*(.*)$",
@@ -578,14 +873,19 @@ def generar_python(pseudocodigo):
 
 
             partes_python = [
-                expresion_python(x)
-                for x in partes
+                expresion_python(
+                    parte,
+                    nombres_variables
+                )
+                for parte in partes
             ]
 
 
             agregar(
                 "print("
-                + ", ".join(partes_python)
+                + ", ".join(
+                    partes_python
+                )
                 + ', sep="")'
             )
 
@@ -593,9 +893,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
-        # ASIGNACION
-        # ====================================================
+        # ----------------------------------------------------
+        # ASIGNACIÓN
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^([A-Za-z_][A-Za-z0-9_]*)"
@@ -610,8 +910,10 @@ def generar_python(pseudocodigo):
                 coincidencia.group(1)
             )
 
+
             expresion = expresion_python(
-                coincidencia.group(2)
+                coincidencia.group(2),
+                nombres_variables
             )
 
 
@@ -623,9 +925,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # SI
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Si\s+(.+?)\s+Entonces$",
@@ -637,7 +939,8 @@ def generar_python(pseudocodigo):
         if coincidencia:
 
             condicion = expresion_python(
-                coincidencia.group(1)
+                coincidencia.group(1),
+                nombres_variables
             )
 
 
@@ -651,9 +954,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # SINO
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus in (
             "SINO",
@@ -676,9 +979,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
-        # FIN SI
-        # ====================================================
+        # ----------------------------------------------------
+        # FINSI
+        # ----------------------------------------------------
 
         if mayus in (
             "FINSI",
@@ -693,9 +996,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # PARA
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Para\s+(\w+)\s*<-\s*(.+?)"
@@ -709,23 +1012,33 @@ def generar_python(pseudocodigo):
 
         if coincidencia:
 
-            variable = coincidencia.group(1)
+            variable = (
+                coincidencia.group(1)
+            )
+
 
             inicio = expresion_python(
-                coincidencia.group(2)
+                coincidencia.group(2),
+                nombres_variables
             )
+
 
             fin = expresion_python(
-                coincidencia.group(3)
+                coincidencia.group(3),
+                nombres_variables
             )
 
-            paso = coincidencia.group(4)
+
+            paso = (
+                coincidencia.group(4)
+            )
 
 
             if paso:
 
                 paso = expresion_python(
-                    paso
+                    paso,
+                    nombres_variables
                 )
 
 
@@ -760,9 +1073,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # MIENTRAS
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Mientras\s+(.+?)\s+Hacer$",
@@ -774,7 +1087,8 @@ def generar_python(pseudocodigo):
         if coincidencia:
 
             condicion = expresion_python(
-                coincidencia.group(1)
+                coincidencia.group(1),
+                nombres_variables
             )
 
 
@@ -798,9 +1112,9 @@ def generar_python(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # REPETIR
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus == "REPETIR":
 
@@ -824,7 +1138,8 @@ def generar_python(pseudocodigo):
         if coincidencia:
 
             condicion = expresion_python(
-                coincidencia.group(1)
+                coincidencia.group(1),
+                nombres_variables
             )
 
 
@@ -843,12 +1158,13 @@ def generar_python(pseudocodigo):
                 indentacion - 1
             )
 
+
             continue
 
 
-        # ====================================================
-        # LINEA NO RECONOCIDA
-        # ====================================================
+        # ----------------------------------------------------
+        # NO RECONOCIDA
+        # ----------------------------------------------------
 
         agregar(
             "# " + linea
@@ -864,16 +1180,18 @@ def generar_python(pseudocodigo):
 # GENERAR C++
 # ============================================================
 
-def generar_cpp(pseudocodigo):
+def generar_cpp(
+    pseudocodigo,
+    entradas=None
+):
 
-    lineas_originales = (
-        pseudocodigo.splitlines()
-    )
+    entradas = entradas or {}
+
 
     lineas = []
 
 
-    for linea in lineas_originales:
+    for linea in pseudocodigo.splitlines():
 
         linea = quitar_comentarios(
             linea
@@ -887,34 +1205,13 @@ def generar_cpp(pseudocodigo):
             )
 
 
-    tipos = {}
+    tipos = obtener_tipos(
+        lineas
+    )
 
-
-    for linea in lineas:
-
-        coincidencia = re.match(
-            r"^Definir\s+(.+?)\s+Como\s+(.+)$",
-            linea,
-            flags=re.IGNORECASE
-        )
-
-
-        if coincidencia:
-
-            variables = (
-                coincidencia.group(1)
-            )
-
-            tipo = normalizar_tipo(
-                coincidencia.group(2)
-            )
-
-
-            for variable in variables.split(","):
-
-                tipos[
-                    variable.strip()
-                ] = tipo
+    nombres_variables = set(
+        tipos.keys()
+    )
 
 
     resultado = [
@@ -945,6 +1242,10 @@ def generar_cpp(pseudocodigo):
         mayus = linea.upper()
 
 
+        # ----------------------------------------------------
+        # ALGORITMO
+        # ----------------------------------------------------
+
         if mayus.startswith(
             "ALGORITMO"
         ):
@@ -957,9 +1258,9 @@ def generar_cpp(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # DEFINIR
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Definir\s+(.+?)\s+Como\s+(.+)$",
@@ -971,10 +1272,12 @@ def generar_cpp(pseudocodigo):
         if coincidencia:
 
             variables = [
-                x.strip()
-                for x in
-                coincidencia.group(1)
+                variable.strip()
+                for variable in
+                coincidencia
+                .group(1)
                 .split(",")
+                if variable.strip()
             ]
 
 
@@ -992,9 +1295,13 @@ def generar_cpp(pseudocodigo):
 
 
             agregar(
-                tipos_cpp[tipo]
+                tipos_cpp[
+                    tipo
+                ]
                 + " "
-                + ", ".join(variables)
+                + ", ".join(
+                    variables
+                )
                 + ";"
             )
 
@@ -1002,9 +1309,9 @@ def generar_cpp(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # LEER
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Leer\s+(.+)$",
@@ -1016,26 +1323,66 @@ def generar_cpp(pseudocodigo):
         if coincidencia:
 
             variables = [
-                x.strip()
-                for x in
-                coincidencia.group(1)
+                variable.strip()
+                for variable in
+                coincidencia
+                .group(1)
                 .split(",")
+                if variable.strip()
             ]
 
 
-            agregar(
-                "cin >> "
-                + " >> ".join(variables)
-                + ";"
-            )
+            for variable in variables:
+
+                tipo = tipos.get(
+                    variable,
+                    "cadena"
+                )
+
+
+                # ============================================
+                # HAY VALOR INTRODUCIDO
+                # ============================================
+
+                if (
+                    variable in entradas
+                    and str(
+                        entradas[
+                            variable
+                        ]
+                    ).strip() != ""
+                ):
+
+                    valor = valor_cpp(
+                        entradas[
+                            variable
+                        ],
+                        tipo
+                    )
+
+
+                    agregar(
+                        f"{variable} = {valor};"
+                    )
+
+
+                # ============================================
+                # NO HAY VALOR
+                # ============================================
+
+                else:
+
+                    agregar(
+                        f"cin >> {variable};"
+                    )
 
 
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ESCRIBIR
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Escribir\s*(.*)$",
@@ -1067,14 +1414,19 @@ def generar_cpp(pseudocodigo):
 
 
             partes_cpp = [
-                expresion_cpp(x)
-                for x in partes
+                expresion_cpp(
+                    parte,
+                    nombres_variables
+                )
+                for parte in partes
             ]
 
 
             agregar(
                 "cout << "
-                + " << ".join(partes_cpp)
+                + " << ".join(
+                    partes_cpp
+                )
                 + " << endl;"
             )
 
@@ -1082,9 +1434,9 @@ def generar_cpp(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # ASIGNACIÓN
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^([A-Za-z_][A-Za-z0-9_]*)"
@@ -1095,22 +1447,29 @@ def generar_cpp(pseudocodigo):
 
         if coincidencia:
 
-            agregar(
+            variable = (
                 coincidencia.group(1)
-                + " = "
-                + expresion_cpp(
-                    coincidencia.group(2)
-                )
-                + ";"
+            )
+
+
+            expresion = expresion_cpp(
+                coincidencia.group(2),
+                nombres_variables
+            )
+
+
+            agregar(
+                f"{variable} = "
+                f"{expresion};"
             )
 
 
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # SI
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Si\s+(.+?)\s+Entonces$",
@@ -1121,12 +1480,14 @@ def generar_cpp(pseudocodigo):
 
         if coincidencia:
 
+            condicion = expresion_cpp(
+                coincidencia.group(1),
+                nombres_variables
+            )
+
+
             agregar(
-                "if ("
-                + expresion_cpp(
-                    coincidencia.group(1)
-                )
-                + ")"
+                f"if ({condicion})"
             )
 
             agregar(
@@ -1139,9 +1500,9 @@ def generar_cpp(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # SINO
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus in (
             "SINO",
@@ -1152,6 +1513,7 @@ def generar_cpp(pseudocodigo):
                 1,
                 indentacion - 1
             )
+
 
             agregar(
                 "}"
@@ -1171,9 +1533,9 @@ def generar_cpp(pseudocodigo):
             continue
 
 
-        # ====================================================
-        # FIN SI
-        # ====================================================
+        # ----------------------------------------------------
+        # FINSI
+        # ----------------------------------------------------
 
         if mayus in (
             "FINSI",
@@ -1194,9 +1556,9 @@ def generar_cpp(pseudocodigo):
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # PARA
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Para\s+(\w+)\s*<-\s*(.+?)"
@@ -1210,15 +1572,22 @@ def generar_cpp(pseudocodigo):
 
         if coincidencia:
 
-            variable = coincidencia.group(1)
+            variable = (
+                coincidencia.group(1)
+            )
+
 
             inicio = expresion_cpp(
-                coincidencia.group(2)
+                coincidencia.group(2),
+                nombres_variables
             )
 
+
             fin = expresion_cpp(
-                coincidencia.group(3)
+                coincidencia.group(3),
+                nombres_variables
             )
+
 
             paso_original = (
                 coincidencia.group(4)
@@ -1227,7 +1596,8 @@ def generar_cpp(pseudocodigo):
 
             paso = (
                 expresion_cpp(
-                    paso_original
+                    paso_original,
+                    nombres_variables
                 )
                 if paso_original
                 else "1"
@@ -1272,12 +1642,13 @@ def generar_cpp(pseudocodigo):
                 "}"
             )
 
+
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # MIENTRAS
-        # ====================================================
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Mientras\s+(.+?)\s+Hacer$",
@@ -1288,14 +1659,15 @@ def generar_cpp(pseudocodigo):
 
         if coincidencia:
 
-            agregar(
-                "while ("
-                + expresion_cpp(
-                    coincidencia.group(1)
-                )
-                + ")"
+            condicion = expresion_cpp(
+                coincidencia.group(1),
+                nombres_variables
             )
 
+
+            agregar(
+                f"while ({condicion})"
+            )
 
             agregar(
                 "{"
@@ -1319,12 +1691,13 @@ def generar_cpp(pseudocodigo):
                 "}"
             )
 
+
             continue
 
 
-        # ====================================================
+        # ----------------------------------------------------
         # REPETIR
-        # ====================================================
+        # ----------------------------------------------------
 
         if mayus == "REPETIR":
 
@@ -1357,17 +1730,23 @@ def generar_cpp(pseudocodigo):
             )
 
 
+            condicion = expresion_cpp(
+                coincidencia.group(1),
+                nombres_variables
+            )
+
+
             agregar(
-                "} while (!("
-                + expresion_cpp(
-                    coincidencia.group(1)
-                )
-                + "));"
+                f"}} while (!({condicion}));"
             )
 
 
             continue
 
+
+        # ----------------------------------------------------
+        # NO RECONOCIDA
+        # ----------------------------------------------------
 
         agregar(
             "// " + linea
@@ -1412,6 +1791,12 @@ def traducir():
     )
 
 
+    entradas = datos.get(
+        "entradas",
+        {}
+    ) or {}
+
+
     if not pseudocodigo.strip():
 
         return jsonify({
@@ -1424,12 +1809,14 @@ def traducir():
     try:
 
         codigo_python = generar_python(
-            pseudocodigo
+            pseudocodigo,
+            entradas
         )
 
 
         codigo_cpp = generar_cpp(
-            pseudocodigo
+            pseudocodigo,
+            entradas
         )
 
 
@@ -1444,5 +1831,7 @@ def traducir():
 
         return jsonify({
             "ok": False,
-            "error": str(error)
+            "error": str(
+                error
+            )
         }), 400

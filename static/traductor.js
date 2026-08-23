@@ -174,6 +174,62 @@ document.addEventListener(
         );
 
 
+        // ============================================================
+// OBTENER LOS VALORES ACTUALES DE ENTRADA
+// ============================================================
+
+function obtenerEntradasActuales() {
+
+    const valores = {};
+
+    const contenedorEntradas =
+        document.getElementById(
+            "entradas"
+        );
+
+
+    if (!contenedorEntradas) {
+
+        return valores;
+    }
+
+
+    const inputs =
+        contenedorEntradas.querySelectorAll(
+            "input[data-variable]"
+        );
+
+
+    inputs.forEach(
+        function (input) {
+
+            const variable =
+                input.dataset.variable;
+
+
+            const valor =
+                input.value.trim();
+
+
+            if (
+                variable &&
+                valor !== ""
+            ) {
+
+                valores[
+                    variable
+                ] = valor;
+            }
+
+        }
+    );
+
+
+    return valores;
+}
+
+
+
         // ====================================================
         // GENERAR CÓDIGO
         // ====================================================
@@ -209,7 +265,10 @@ document.addEventListener(
                             body:
                                 JSON.stringify({
                                     pseudocodigo:
-                                        pseudocodigo
+                                        pseudocodigo,
+
+                                         entradas:
+                                          obtenerEntradasActuales()
                                 })
                         }
                     );
@@ -308,11 +367,18 @@ document.addEventListener(
 
         if (btnEjecutar) {
 
-            btnEjecutar.addEventListener(
-                "click",
-                generarCodigo
+    btnEjecutar.addEventListener(
+        "click",
+        function () {
+
+            setTimeout(
+                generarCodigo,
+                300
             );
+
         }
+    );
+}
 
 
         // ====================================================
