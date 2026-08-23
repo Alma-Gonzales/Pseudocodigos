@@ -28,7 +28,7 @@
 <div class="app">
 
     <!-- ================================================= -->
-    <!-- BARRA SUPERIOR -->
+    <!-- Codigo Html de la estructura del Sitio Web   -->
     <!-- ================================================= -->
 
     <header class="topbar">
@@ -77,15 +77,10 @@
     </header>
 
 
-    <!-- ================================================= -->
-    <!-- CONTENIDO -->
-    <!-- ================================================= -->
 
     <main class="main">
 
-        <!-- ============================================= -->
-        <!-- PANEL IZQUIERDO -->
-        <!-- ============================================= -->
+    
 
         <section class="panel editor-panel">
 
@@ -94,12 +89,9 @@
                 <div>
 
                     <h2>
-                        Pseudocódigo
+                       Escribe tu algoritmo
                     </h2>
 
-                    <p>
-                        Escribe tu algoritmo
-                    </p>
 
                 </div>
 
@@ -126,7 +118,7 @@
                     id="btnEjecutar"
                     class="btn execute"
                 >
-                    ▶ Ejecutar
+                    Ejecutar
                 </button>
 
                 <button
@@ -148,13 +140,11 @@
         </section>
 
 
-        <!-- ============================================= -->
-        <!-- PANEL DERECHO -->
-        <!-- ============================================= -->
+    
 
         <section class="right-column">
 
-            <!-- ENTRADAS -->
+           
 
             <div class="panel">
 
@@ -165,10 +155,6 @@
                         <h2>
                             Entradas
                         </h2>
-
-                        <p>
-                            Variables solicitadas por Leer
-                        </p>
 
                     </div>
 
@@ -185,7 +171,7 @@
             </div>
 
 
-            <!-- RESULTADOS -->
+           
 
             <div class="panel">
 
@@ -196,10 +182,6 @@
                         <h2>
                             Resultados
                         </h2>
-
-                        <p>
-                            Salida del algoritmo
-                        </p>
 
                     </div>
 
@@ -221,9 +203,6 @@
     </main>
 
 
-    <!-- ================================================= -->
-    <!-- DIAGRAMA -->
-    <!-- ================================================= -->
 
     <section class="panel diagram-panel">
 
@@ -234,10 +213,6 @@
                 <h2>
                     Diagrama de flujo
                 </h2>
-
-                <p>
-                    Representación gráfica del algoritmo
-                </p>
 
             </div>
 
@@ -256,9 +231,6 @@
 
     </section>
 
-    <!-- ================================================= -->
-<!-- CÓDIGO GENERADO -->
-<!-- ================================================= -->
 
 <section class="panel code-panel">
 
@@ -269,10 +241,6 @@
             <h2>
                 Código generado
             </h2>
-
-            <p>
-                Conversión automática del pseudocódigo
-            </p>
 
         </div>
 
@@ -310,9 +278,7 @@
 
 </section>
 
-    <!-- ================================================= -->
-    <!-- EJERCICIOS GUARDADOS -->
-    <!-- ================================================= -->
+
 
     <section class="panel saved-panel">
 
@@ -324,9 +290,6 @@
                     Ejercicios guardados
                 </h2>
 
-                <p>
-                    Guarda, edita o elimina tus ejercicios.
-                </p>
 
             </div>
 
@@ -346,9 +309,7 @@
     </section>
 
 </div>
-<!-- ===================================================== -->
-<!-- PIE DE PÁGINA -->
-<!-- ===================================================== -->
+
 
 <footer class="footer">
 
@@ -370,10 +331,6 @@
 
 </footer>
 
-
-<!-- ===================================================== -->
-<!-- JAVASCRIPT -->
-<!-- ===================================================== -->
 
 <script
     src="{{ url_for('static', filename='app.js') }}"

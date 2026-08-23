@@ -1,13 +1,10 @@
 // ============================================================
-// SIMULADOR DE PSEUDOCÓDIGO
+// Este JS permite que se ejecuten las instrucciones del app.py
+// Es lo que permite la interaccion entre el usuario y la intefasaz
 // ============================================================
 
 let ejercicioActualId = null;
 
-
-// ============================================================
-// ELEMENTOS
-// ============================================================
 
 const pseudocodigo =
     document.getElementById("pseudocodigo");
@@ -28,9 +25,6 @@ const listaEjercicios =
     document.getElementById("listaEjercicios");
 
 
-// ============================================================
-// MERMAID
-// ============================================================
 
 mermaid.initialize({
     startOnLoad: false,
@@ -39,9 +33,6 @@ mermaid.initialize({
 });
 
 
-// ============================================================
-// INICIO
-// ============================================================
 
 document.addEventListener(
     "DOMContentLoaded",
@@ -55,9 +46,6 @@ document.addEventListener(
 );
 
 
-// ============================================================
-// NUEVO EJERCICIO
-// ============================================================
 
 function nuevoEjercicio() {
 
@@ -86,10 +74,6 @@ function nuevoEjercicio() {
     `;
 }
 
-
-// ============================================================
-// DETECTAR ENTRADAS
-// ============================================================
 
 async function detectarEntradas() {
 
@@ -151,9 +135,6 @@ async function detectarEntradas() {
 }
 
 
-// ============================================================
-// MOSTRAR ENTRADAS
-// ============================================================
 
 function mostrarEntradas(variables) {
 
@@ -206,9 +187,6 @@ function mostrarEntradas(variables) {
 }
 
 
-// ============================================================
-// OBTENER ENTRADAS
-// ============================================================
 
 function obtenerValoresEntrada() {
 
@@ -233,10 +211,6 @@ function obtenerValoresEntrada() {
 }
 
 
-// ============================================================
-// EJECUTAR
-// ============================================================
-
 async function ejecutarAlgoritmo() {
 
     const codigo =
@@ -252,39 +226,23 @@ async function ejecutarAlgoritmo() {
     }
 
 
-    // --------------------------------------------------------
-    // IMPORTANTE:
-    // NO volvemos a llamar detectarEntradas aquí.
-    //
-    // Si lo hacemos, se reconstruyen los inputs y se pierden
-    // los valores que el usuario acaba de escribir.
-    // --------------------------------------------------------
-
     const inputsExistentes =
         entradas.querySelectorAll(
             "input[data-variable]"
         );
 
 
-    // Si todavía no existen inputs,
-    // los detectamos una sola vez.
     if (inputsExistentes.length === 0) {
 
         await detectarEntradas();
     }
 
 
-    // --------------------------------------------------------
-    // AHORA obtenemos los valores escritos por el usuario
-    // --------------------------------------------------------
 
     const valores =
         obtenerValoresEntrada();
 
 
-    // --------------------------------------------------------
-    // Mostrar estado de ejecución
-    // --------------------------------------------------------
 
     resultados.innerHTML = `
         <div class="empty">
@@ -330,9 +288,6 @@ async function ejecutarAlgoritmo() {
         }
 
 
-        // ----------------------------------------------------
-        // Mostrar resultados
-        // ----------------------------------------------------
 
         mostrarResultados(datos);
 
@@ -350,17 +305,13 @@ async function ejecutarAlgoritmo() {
 }
 
 
-// ============================================================
-// MOSTRAR RESULTADOS
-// ============================================================
+
 
 function mostrarResultados(datos) {
 
     let html = "";
 
-    // ========================================================
-    // TITULO DE SALIDA
-    // ========================================================
+
 
     html += `
         <div class="output-title">
@@ -368,10 +319,6 @@ function mostrarResultados(datos) {
         </div>
     `;
 
-
-    // ========================================================
-    // SALIDAS DEL ALGORITMO
-    // ========================================================
 
     if (
         datos.salidas &&
@@ -384,10 +331,6 @@ function mostrarResultados(datos) {
                 let texto =
                     String(salida);
 
-
-                // ====================================================
-                // BUSCAR SI LA SALIDA ES UN MENSAJE DE ENTRADA
-                // ====================================================
 
                 let encontrado = false;
 
@@ -404,15 +347,6 @@ function mostrarResultados(datos) {
                             }
 
 
-                            // --------------------------------------------
-                            // Ejemplo:
-                            //
-                            // "Ingrese x:"
-                            //
-                            // se convierte en:
-                            //
-                            // "Ingrese x: 6"
-                            // --------------------------------------------
 
                             const patron =
                                 new RegExp(
@@ -441,9 +375,6 @@ function mostrarResultados(datos) {
                 }
 
 
-                // ====================================================
-                // MOSTRAR LA SALIDA
-                // ====================================================
 
                 html += `
                     <div class="result-line">
@@ -465,9 +396,6 @@ function mostrarResultados(datos) {
     }
 
 
-    // ========================================================
-    // VARIABLES
-    // ========================================================
 
     if (datos.variables) {
 
@@ -520,9 +448,6 @@ function mostrarResultados(datos) {
     }
 
 
-    // ========================================================
-    // MOSTRAR RESULTADOS
-    // ========================================================
 
     resultados.innerHTML = html;
 }
@@ -537,9 +462,6 @@ function escapeRegExp(texto) {
 }
 
 
-// ============================================================
-// GENERAR DIAGRAMA
-// ============================================================
 
 async function generarDiagrama() {
 
@@ -629,10 +551,6 @@ async function generarDiagrama() {
     }
 }
 
-
-// ============================================================
-// GUARDAR
-// ============================================================
 
 async function guardarEjercicio() {
 
@@ -755,9 +673,6 @@ async function guardarEjercicio() {
 }
 
 
-// ============================================================
-// CARGAR EJERCICIOS
-// ============================================================
 
 async function cargarEjercicios() {
 
@@ -793,9 +708,6 @@ async function cargarEjercicios() {
 }
 
 
-// ============================================================
-// MOSTRAR EJERCICIOS
-// ============================================================
 
 function mostrarEjercicios(ejercicios) {
 
@@ -922,9 +834,6 @@ function mostrarEjercicios(ejercicios) {
 }
 
 
-// ============================================================
-// CARGAR EJERCICIO
-// ============================================================
 
 function cargarEjercicio(ejercicio) {
 
@@ -958,9 +867,6 @@ function cargarEjercicio(ejercicio) {
 }
 
 
-// ============================================================
-// ELIMINAR EJERCICIO
-// ============================================================
 
 async function eliminarEjercicio(id) {
 
@@ -1021,9 +927,6 @@ async function eliminarEjercicio(id) {
 }
 
 
-// ============================================================
-// LIMPIAR
-// ============================================================
 
 function limpiarEditor() {
 
@@ -1049,9 +952,6 @@ function limpiarEditor() {
 }
 
 
-// ============================================================
-// ESCAPE HTML
-// ============================================================
 
 function escapeHtml(texto) {
 
@@ -1064,9 +964,6 @@ function escapeHtml(texto) {
 }
 
 
-// ============================================================
-// ESCAPE MERMAID
-// ============================================================
 
 function escapeHtmlMermaid(texto) {
 
@@ -1077,9 +974,6 @@ function escapeHtmlMermaid(texto) {
 }
 
 
-// ============================================================
-// EVENTOS
-// ============================================================
 
 document
     .getElementById("btnNuevo")
@@ -1121,9 +1015,7 @@ document
     );
 
 
-// ============================================================
-// DETECTAR VARIABLES AL ESCRIBIR
-// ============================================================
+
 
 pseudocodigo.addEventListener(
     "input",

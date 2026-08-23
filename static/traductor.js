@@ -1,5 +1,6 @@
 // ============================================================
-// GENERADOR DE CÓDIGO PYTHON / C++
+// Esto permitira que se genere lo que sale en el el Pseudocodigo 
+// y lo convierte en codigo de python o C++
 // ============================================================
 
 document.addEventListener(
@@ -54,7 +55,8 @@ document.addEventListener(
 
 
         // ====================================================
-        // MOSTRAR CÓDIGO
+        // permite que se muestren los codigos en python o c++
+        // en el apartado especifico
         // ====================================================
 
         function mostrarCodigo() {
@@ -92,7 +94,8 @@ document.addEventListener(
 
 
         // ====================================================
-        // LIMPIAR CÓDIGO GENERADO
+        // Este es la funcion que permite que se limpie el codigo
+        // realizado y quede vacio de nuevo. 
         // ====================================================
 
         function limpiarCodigoGenerado() {
@@ -121,7 +124,7 @@ document.addEventListener(
 
 
         // ====================================================
-        // BOTÓN PYTHON
+        // Permite que se muestre el codigo en Python o c++
         // ====================================================
 
         btnPython.addEventListener(
@@ -147,10 +150,6 @@ document.addEventListener(
         );
 
 
-        // ====================================================
-        // BOTÓN C++
-        // ====================================================
-
         btnCpp.addEventListener(
             "click",
             function () {
@@ -174,9 +173,6 @@ document.addEventListener(
         );
 
 
-        // ============================================================
-// OBTENER LOS VALORES ACTUALES DE ENTRADA
-// ============================================================
 
 function obtenerEntradasActuales() {
 
@@ -229,10 +225,6 @@ function obtenerEntradasActuales() {
 }
 
 
-
-        // ====================================================
-        // GENERAR CÓDIGO
-        // ====================================================
 
         async function generarCodigo() {
 
@@ -314,10 +306,6 @@ function obtenerEntradasActuales() {
         }
 
 
-        // ====================================================
-        // GENERAR AUTOMÁTICAMENTE AL ESCRIBIR
-        // ====================================================
-
         editor.addEventListener(
             "input",
             function () {
@@ -336,10 +324,6 @@ function obtenerEntradasActuales() {
         );
 
 
-        // ====================================================
-        // ACTUALIZAR CUANDO SE PULSE DIAGRAMA
-        // ====================================================
-
         const btnDiagrama =
             document.getElementById(
                 "btnDiagrama"
@@ -354,10 +338,6 @@ function obtenerEntradasActuales() {
             );
         }
 
-
-        // ====================================================
-        // ACTUALIZAR CUANDO SE PULSE EJECUTAR
-        // ====================================================
 
         const btnEjecutar =
             document.getElementById(
@@ -381,9 +361,6 @@ function obtenerEntradasActuales() {
 }
 
 
-        // ====================================================
-        // LIMPIAR TAMBIÉN PYTHON Y C++
-        // ====================================================
 
         if (btnLimpiar) {
 
