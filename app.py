@@ -6,10 +6,11 @@ import re
 import os
 import webbrowser
 import threading
+import math
 
 
 # ============================================================
-# Configuración para convertir el pseudocodigo a python y C++
+# CONFIGURACIÓN PARA CONVERTIR PSEUDOCÓDIGO A PYTHON Y C++
 # ============================================================
 
 app = Flask(__name__)
@@ -18,8 +19,7 @@ app.register_blueprint(traductor_bp)
 
 
 # ============================================================
-# Ubicación de proyecto para la cracion de carpera de Datos y 
-# creacion de archivo .db
+# UBICACIÓN DEL PROYECTO
 # ============================================================
 
 BASE_DIR = os.path.dirname(
@@ -44,8 +44,7 @@ SQLITE_DB = os.path.join(
 
 # ============================================================
 # BASE DE DATOS
-# Utiliza dos bases una local que es SQLite y una base de datos 
-# Para el Render que utiliza PostgregSQL.
+# SQLITE LOCAL / POSTGRESQL SUPABASE EN RENDER
 # ============================================================
 
 DATABASE_URL = os.environ.get(
@@ -59,19 +58,14 @@ USAR_POSTGRES = bool(
 
 
 # ============================================================
-# Se realiza la conexion a ambas base de datos. 
+# CONEXIÓN A BASE DE DATOS
 # ============================================================
 
 def get_db():
 
-    # --------------------------------------------------------
-    # Base de datos de POSTGREGSQL EN SUPABASE
-    # --------------------------------------------------------
-
     if USAR_POSTGRES:
 
         import psycopg
-
         from psycopg.rows import dict_row
 
         conn = psycopg.connect(
@@ -81,10 +75,6 @@ def get_db():
 
         return conn
 
-
-    # --------------------------------------------------------
-    # Base de datos SQLITE Local
-    # --------------------------------------------------------
 
     conn = sqlite3.connect(
         SQLITE_DB
@@ -96,7 +86,7 @@ def get_db():
 
 
 # ============================================================
-# Se le da inicio a las base de datos.
+# INICIALIZAR BASE DE DATOS
 # ============================================================
 
 def init_db():
@@ -105,10 +95,6 @@ def init_db():
 
     cursor = conn.cursor()
 
-
-    # --------------------------------------------------------
-    # Permite iniciarse la base en PostgregSQL.
-    # --------------------------------------------------------
 
     if USAR_POSTGRES:
 
@@ -120,11 +106,6 @@ def init_db():
                 fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-
-
-    # --------------------------------------------------------
-    # Inicia el proceso en la base de datos Local.
-    # --------------------------------------------------------
 
     else:
 
@@ -146,8 +127,7 @@ def init_db():
 
 
 # ============================================================
-# Funiciones para poder elimanacion de tabulaciones innecesarias
-# y adapta  los operadores de PSeInt
+# FUNCIONES AUXILIARES
 # ============================================================
 
 def limpiar_linea(linea):
@@ -171,15 +151,163 @@ def quitar_comentarios(linea):
     return linea
 
 
+# ============================================================
+# FUNCIÓN DE REDONDEO PSEINT
+# ============================================================
+
+def redon_pseint(valor):
+
+    if valor >= 0:
+
+        return math.floor(
+            valor + 0.5
+        )
+
+    return math.ceil(
+        valor - 0.5
+    )
+
+
+# ============================================================
+# NORMALIZAR OPERADORES Y FUNCIONES PSEINT
+# ============================================================
+
 def normalizar_operadores(texto):
 
-    # operador de Diferencias
+    # Diferente
     texto = texto.replace(
         "<>",
         "!="
     )
 
-    # Operador lógico Y
+
+    # MOD
+    texto = re.sub(
+        r"\bMOD\b",
+        "%",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # DIV
+    texto = re.sub(
+        r"\bDIV\b",
+        "//",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # TRUNC
+    texto = re.sub(
+        r"\bTRUNC\s*\(",
+        "trunc(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # REDON
+    texto = re.sub(
+        r"\bREDON\s*\(",
+        "redon(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # RC
+    texto = re.sub(
+        r"\bRC\s*\(",
+        "sqrt(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # ABS
+    texto = re.sub(
+        r"\bABS\s*\(",
+        "abs(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # LN
+    texto = re.sub(
+        r"\bLN\s*\(",
+        "log(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # EXP
+    texto = re.sub(
+        r"\bEXP\s*\(",
+        "exp(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # SEN
+    texto = re.sub(
+        r"\bSEN\s*\(",
+        "sin(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # COS
+    texto = re.sub(
+        r"\bCOS\s*\(",
+        "cos(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # TAN
+    texto = re.sub(
+        r"\bTAN\s*\(",
+        "tan(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # ASEN
+    texto = re.sub(
+        r"\bASEN\s*\(",
+        "asin(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # ACOS
+    texto = re.sub(
+        r"\bACOS\s*\(",
+        "acos(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # ATAN
+    texto = re.sub(
+        r"\bATAN\s*\(",
+        "atan(",
+        texto,
+        flags=re.IGNORECASE
+    )
+
+
+    # Y
     texto = re.sub(
         r"\bY\b",
         " and ",
@@ -187,7 +315,8 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-    # Operador lógico O
+
+    # O
     texto = re.sub(
         r"\bO\b",
         " or ",
@@ -195,7 +324,8 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-    # Operador lógico NO
+
+    # NO
     texto = re.sub(
         r"\bNO\b",
         " not ",
@@ -203,14 +333,15 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-    # Operador de Potencia
+
+    # Potencia
     texto = texto.replace(
         "^",
         "**"
     )
 
 
-    # Operador de Verdadero
+    # Verdadero
     texto = re.sub(
         r"\bVerdadero\b",
         "True",
@@ -219,7 +350,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # Operador de Falso
+    # Falso
     texto = re.sub(
         r"\bFalso\b",
         "False",
@@ -228,7 +359,7 @@ def normalizar_operadores(texto):
     )
 
 
-    # operador de Igualdades
+    # Igualdad
     texto = re.sub(
         r"(?<![<>=!])=(?!=)",
         "==",
@@ -240,8 +371,31 @@ def normalizar_operadores(texto):
 
 
 # ============================================================
-# Detecta las variables de entrada que se estan solicitando 
-# En el Pseudocodigo
+# FUNCIONES PERMITIDAS EN EVALUACIÓN
+# ============================================================
+
+def obtener_funciones_permitidas():
+
+    return {
+        "sqrt": math.sqrt,
+        "abs": abs,
+        "trunc": math.trunc,
+        "redon": redon_pseint,
+        "log": math.log,
+        "exp": math.exp,
+        "sin": math.sin,
+        "cos": math.cos,
+        "tan": math.tan,
+        "asin": math.asin,
+        "acos": math.acos,
+        "atan": math.atan,
+        "True": True,
+        "False": False
+    }
+
+
+# ============================================================
+# DETECTAR VARIABLES DE ENTRADA
 # ============================================================
 
 def detectar_variables_entrada(
@@ -272,10 +426,7 @@ def detectar_variables_entrada(
 
         if coincidencia:
 
-            contenido = (
-                coincidencia.group(1)
-            )
-
+            contenido = coincidencia.group(1)
 
             partes = contenido.split(",")
 
@@ -301,11 +452,7 @@ def detectar_variables_entrada(
 
 
 # ============================================================
-# Detecta los datos ingresados y los transforma en valores:
-# Decimales, enteros, boolean, y textos.
-# De esa forma se resuelven las operaciones, utilizando los 
-# valores de las variable y de esa forma se evaluan 
-# las condiciones utilizadas. 
+# CONVERTIR VALOR
 # ============================================================
 
 def convertir_valor(valor):
@@ -323,7 +470,6 @@ def convertir_valor(valor):
     if valor == "":
 
         return ""
-
 
 
     if valor.lower() == "verdadero":
@@ -346,6 +492,7 @@ def convertir_valor(valor):
 
         pass
 
+
     try:
 
         return float(
@@ -360,6 +507,10 @@ def convertir_valor(valor):
     return valor
 
 
+# ============================================================
+# EVALUAR EXPRESIONES
+# ============================================================
+
 def evaluar_expresion(
     expresion,
     variables
@@ -368,6 +519,7 @@ def evaluar_expresion(
     expresion = expresion.strip()
 
 
+    # Texto entre comillas
     if (
         len(expresion) >= 2
         and expresion[0] == '"'
@@ -377,7 +529,7 @@ def evaluar_expresion(
         return expresion[1:-1]
 
 
-
+    # Sustituir variables por valores
     nombres = sorted(
         variables.keys(),
         key=len,
@@ -404,14 +556,7 @@ def evaluar_expresion(
     )
 
 
-    expresion = re.sub(
-        r"\bRC\((.*?)\)",
-        r"(\1 ** 0.5)",
-        expresion,
-        flags=re.IGNORECASE
-    )
-
-
+    # Validación básica
     permitidos = re.fullmatch(
         r"[0-9A-Za-z_+\-*/().%, '<>=!&|]*",
         expresion
@@ -429,7 +574,8 @@ def evaluar_expresion(
             expresion,
             {
                 "__builtins__": {}
-            }
+            },
+            obtener_funciones_permitidas()
         )
 
 
@@ -439,8 +585,7 @@ def evaluar_expresion(
 
 
 # ============================================================
-# Se Evaluan las condiciones identifica que es lo que esta 
-# solicitando el pseudocodigo.
+# EVALUAR CONDICIONES
 # ============================================================
 
 def evaluar_condicion(
@@ -483,7 +628,8 @@ def evaluar_condicion(
             condicion,
             {
                 "__builtins__": {}
-            }
+            },
+            obtener_funciones_permitidas()
         )
 
 
@@ -498,8 +644,7 @@ def evaluar_condicion(
 
 
 # ============================================================
-# Reconoce las Instrucciones del Pseudocodigo, si solicita 
-# Ingresar valores, o solo lee una instruccion. 
+# DIVIDIR ESCRIBIR
 # ============================================================
 
 def dividir_escribir(
@@ -568,8 +713,7 @@ def dividir_escribir(
 
 
 # ============================================================
-# Al presionar el boton de ejecutar, lee el pseudocodigo, y regresa
-# las respuestas de los datos solicitados. 
+# EJECUTOR
 # ============================================================
 
 class Ejecutor:
@@ -579,7 +723,6 @@ class Ejecutor:
         pseudocodigo,
         entradas
     ):
-
 
         self.lineas = []
 
@@ -600,7 +743,6 @@ class Ejecutor:
                 self.lineas.append(
                     linea
                 )
-
 
 
         self.variables = {}
@@ -626,6 +768,10 @@ class Ejecutor:
         )
 
 
+    # ========================================================
+    # EJECUTAR BLOQUE
+    # ========================================================
+
     def ejecutar_bloque(
         self,
         inicio,
@@ -642,7 +788,10 @@ class Ejecutor:
             mayus = linea.upper()
 
 
-    
+            # ------------------------------------------------
+            # ALGORITMO
+            # ------------------------------------------------
+
             if mayus.startswith(
                 "ALGORITMO"
             ):
@@ -652,12 +801,20 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # FINALGORITMO
+            # ------------------------------------------------
+
             if mayus == "FINALGORITMO":
 
                 i += 1
 
                 continue
 
+
+            # ------------------------------------------------
+            # DEFINIR
+            # ------------------------------------------------
 
             if mayus.startswith(
                 "DEFINIR"
@@ -668,6 +825,10 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # LEER
+            # ------------------------------------------------
+
             coincidencia = re.match(
                 r"^Leer\s+(.+)$",
                 linea,
@@ -677,19 +838,14 @@ class Ejecutor:
 
             if coincidencia:
 
-                contenido = (
-                    coincidencia.group(1)
-                )
-
+                contenido = coincidencia.group(1)
 
                 variables_leer = []
 
 
                 for variable in contenido.split(","):
 
-                    variable = (
-                        variable.strip()
-                    )
+                    variable = variable.strip()
 
 
                     if not variable:
@@ -714,11 +870,9 @@ class Ejecutor:
 
                 if i > 0:
 
-                    linea_anterior = (
-                        self.lineas[
-                            i - 1
-                        ]
-                    )
+                    linea_anterior = self.lineas[
+                        i - 1
+                    ]
 
 
                     anterior_es_escribir = bool(
@@ -803,6 +957,10 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # ESCRIBIR
+            # ------------------------------------------------
+
             coincidencia = re.match(
                 r"^Escribir\s*(.*)$",
                 linea,
@@ -812,9 +970,7 @@ class Ejecutor:
 
             if coincidencia:
 
-                contenido = (
-                    coincidencia.group(1)
-                )
+                contenido = coincidencia.group(1)
 
 
                 if contenido.strip() == "":
@@ -877,6 +1033,9 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # ASIGNACIÓN
+            # ------------------------------------------------
 
             coincidencia = re.match(
                 r"^([A-Za-z_][A-Za-z0-9_]*)\s*<-\s*(.+)$",
@@ -886,13 +1045,9 @@ class Ejecutor:
 
             if coincidencia:
 
-                variable = (
-                    coincidencia.group(1)
-                )
+                variable = coincidencia.group(1)
 
-                expresion = (
-                    coincidencia.group(2)
-                )
+                expresion = coincidencia.group(2)
 
 
                 valor = evaluar_expresion(
@@ -911,6 +1066,9 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # SI
+            # ------------------------------------------------
 
             coincidencia = re.match(
                 r"^Si\s+(.+?)\s+Entonces$",
@@ -921,9 +1079,7 @@ class Ejecutor:
 
             if coincidencia:
 
-                condicion = (
-                    coincidencia.group(1)
-                )
+                condicion = coincidencia.group(1)
 
 
                 fin_si, posicion_sino = (
@@ -939,9 +1095,7 @@ class Ejecutor:
 
                 if resultado:
 
-                    inicio_bloque = (
-                        i + 1
-                    )
+                    inicio_bloque = i + 1
 
 
                     fin_bloque = (
@@ -970,6 +1124,9 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # PARA
+            # ------------------------------------------------
 
             coincidencia = re.match(
                 r"^Para\s+(\w+)\s*<-\s*(.+?)"
@@ -983,21 +1140,13 @@ class Ejecutor:
 
             if coincidencia:
 
-                variable = (
-                    coincidencia.group(1)
-                )
+                variable = coincidencia.group(1)
 
-                inicio_expr = (
-                    coincidencia.group(2)
-                )
+                inicio_expr = coincidencia.group(2)
 
-                fin_expr = (
-                    coincidencia.group(3)
-                )
+                fin_expr = coincidencia.group(3)
 
-                paso_expr = (
-                    coincidencia.group(4)
-                )
+                paso_expr = coincidencia.group(4)
 
 
                 inicio_valor = evaluar_expresion(
@@ -1084,6 +1233,10 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # MIENTRAS
+            # ------------------------------------------------
+
             coincidencia = re.match(
                 r"^Mientras\s+(.+?)\s+Hacer$",
                 linea,
@@ -1093,9 +1246,7 @@ class Ejecutor:
 
             if coincidencia:
 
-                condicion = (
-                    coincidencia.group(1)
-                )
+                condicion = coincidencia.group(1)
 
 
                 fin_mientras = (
@@ -1132,6 +1283,10 @@ class Ejecutor:
                 continue
 
 
+            # ------------------------------------------------
+            # REPETIR
+            # ------------------------------------------------
+
             if mayus == "REPETIR":
 
                 fin_repetir = (
@@ -1152,11 +1307,9 @@ class Ejecutor:
                     )
 
 
-                    condicion_linea = (
-                        self.lineas[
-                            fin_repetir
-                        ]
-                    )
+                    condicion_linea = self.lineas[
+                        fin_repetir
+                    ]
 
 
                     condicion = re.sub(
@@ -1191,6 +1344,10 @@ class Ejecutor:
             i += 1
 
 
+    # ========================================================
+    # BUSCAR FIN SI
+    # ========================================================
+
     def buscar_fin_si(
         self,
         posicion
@@ -1206,10 +1363,9 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = (
-                self.lineas[i]
-                .upper()
-            )
+            mayus = self.lineas[
+                i
+            ].upper()
 
 
             if re.match(
@@ -1254,6 +1410,9 @@ class Ejecutor:
         )
 
 
+    # ========================================================
+    # BUSCAR FIN PARA
+    # ========================================================
 
     def buscar_fin_para(
         self,
@@ -1268,10 +1427,9 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = (
-                self.lineas[i]
-                .upper()
-            )
+            mayus = self.lineas[
+                i
+            ].upper()
 
 
             if mayus.startswith(
@@ -1291,11 +1449,14 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return (
-            len(self.lineas) - 1
-        )
+        return len(
+            self.lineas
+        ) - 1
 
 
+    # ========================================================
+    # BUSCAR FIN MIENTRAS
+    # ========================================================
 
     def buscar_fin_mientras(
         self,
@@ -1310,10 +1471,9 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = (
-                self.lineas[i]
-                .upper()
-            )
+            mayus = self.lineas[
+                i
+            ].upper()
 
 
             if mayus.startswith(
@@ -1333,11 +1493,14 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return (
-            len(self.lineas) - 1
-        )
+        return len(
+            self.lineas
+        ) - 1
 
 
+    # ========================================================
+    # BUSCAR HASTA QUE
+    # ========================================================
 
     def buscar_hasta_que(
         self,
@@ -1352,10 +1515,9 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = (
-                self.lineas[i]
-                .upper()
-            )
+            mayus = self.lineas[
+                i
+            ].upper()
 
 
             if mayus == "REPETIR":
@@ -1375,9 +1537,9 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return (
-            len(self.lineas) - 1
-        )
+        return len(
+            self.lineas
+        ) - 1
 
 
 # ============================================================
@@ -1408,15 +1570,16 @@ def ejecutar_pseudocodigo(
 
 
 # ============================================================
-# Se detecta las instrucciones escritas del pseudoxodigo y 
-# las transforma en diagrama
+# PREPARAR TEXTO PARA MERMAID
 # ============================================================
 
 def escapar_mermaid(
     texto
 ):
 
-    texto = str(texto)
+    texto = str(
+        texto
+    )
 
 
     texto = texto.replace(
@@ -1447,7 +1610,7 @@ def escapar_mermaid(
 
 
 # ============================================================
-# Una vez se detecte el diagrama y se meustra el diagrama. 
+# GENERAR DIAGRAMA DE FLUJO
 # ============================================================
 
 def generar_diagrama(
@@ -1499,15 +1662,82 @@ def generar_diagrama(
         "classDef union fill:#a855f7,stroke:#7e22ce,color:#a855f7,stroke-width:2px"
     )
 
+
     contador = 0
+
 
     mermaid.append(
         'inicio(["INICIO"]):::inicio'
     )
 
+
     anterior = "inicio"
 
     pila = []
+
+
+    def conectar_nodo(
+        nodo
+    ):
+
+        nonlocal anterior
+
+
+        if (
+            pila
+            and pila[-1].get(
+                "esperando_inicio_si",
+                False
+            )
+        ):
+
+            decision = pila[-1][
+                "nodo"
+            ]
+
+
+            mermaid.append(
+                f"{decision} -->|SÍ| {nodo}"
+            )
+
+
+            pila[-1][
+                "esperando_inicio_si"
+            ] = False
+
+
+        elif (
+            pila
+            and pila[-1].get(
+                "esperando_inicio_no",
+                False
+            )
+        ):
+
+            decision = pila[-1][
+                "nodo"
+            ]
+
+
+            mermaid.append(
+                f"{decision} -->|NO| {nodo}"
+            )
+
+
+            pila[-1][
+                "esperando_inicio_no"
+            ] = False
+
+
+        else:
+
+            mermaid.append(
+                f"{anterior} --> {nodo}"
+            )
+
+
+        anterior = nodo
+
 
     for linea in lineas:
 
@@ -1515,9 +1745,11 @@ def generar_diagrama(
             linea
         ).strip()
 
+
         if not linea:
 
             continue
+
 
         mayus = linea.upper()
 
@@ -1528,9 +1760,11 @@ def generar_diagrama(
 
             continue
 
+
         if mayus == "FINALGORITMO":
 
             continue
+
 
         if mayus.startswith(
             "DEFINIR"
@@ -1539,109 +1773,81 @@ def generar_diagrama(
             continue
 
 
+        # ----------------------------------------------------
+        # LEER
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "LEER "
         ):
 
-            variable = (
-                linea[5:].strip()
-            )
+            variable = linea[
+                5:
+            ].strip()
+
 
             contador += 1
 
             nodo = f"n{contador}"
+
 
             texto = escapar_mermaid(
                 f"LEER<br/>{variable}"
             )
 
+
             mermaid.append(
                 f'{nodo}["{texto}"]:::leer'
             )
 
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision = pila[-1]["nodo"]
+            conectar_nodo(
+                nodo
+            )
 
-                mermaid.append(
-                    f"{decision} -->|SÍ| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_si"] = False
-
-           
-            elif pila and pila[-1].get("esperando_inicio_no", False):
-
-                decision = pila[-1]["nodo"]
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_no"] = False
-
-            else:
-
-                mermaid.append(
-                    f"{anterior} --> {nodo}"
-                )
-
-            anterior = nodo
 
             continue
 
+
+        # ----------------------------------------------------
+        # ESCRIBIR
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "ESCRIBIR"
         ):
 
-            texto = (
-                linea[8:].strip()
-            )
+            texto = linea[
+                8:
+            ].strip()
+
 
             texto = escapar_mermaid(
                 f"ESCRIBIR<br/>{texto}"
             )
 
+
             contador += 1
 
             nodo = f"n{contador}"
+
 
             mermaid.append(
                 f'{nodo}["{texto}"]:::escribir'
             )
 
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision = pila[-1]["nodo"]
+            conectar_nodo(
+                nodo
+            )
 
-                mermaid.append(
-                    f"{decision} -->|SÍ| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_si"] = False
-
-            elif pila and pila[-1].get("esperando_inicio_no", False):
-
-                decision = pila[-1]["nodo"]
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_no"] = False
-
-            else:
-
-                mermaid.append(
-                    f"{anterior} --> {nodo}"
-                )
-
-            anterior = nodo
 
             continue
 
+
+        # ----------------------------------------------------
+        # SI
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Si\s+(.+?)\s+Entonces$",
@@ -1649,50 +1855,81 @@ def generar_diagrama(
             flags=re.IGNORECASE
         )
 
+
         if coincidencia:
 
-            condicion = (
-                coincidencia.group(1)
+            condicion = coincidencia.group(
+                1
             )
+
 
             condicion = escapar_mermaid(
                 condicion
             )
 
+
             contador += 1
 
             nodo = f"n{contador}"
+
 
             mermaid.append(
                 f'{nodo}{{"{condicion}"}}:::decision'
             )
 
-            # Si este SI está dentro de otra rama
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision_padre = pila[-1]["nodo"]
+            if (
+                pila
+                and pila[-1].get(
+                    "esperando_inicio_si",
+                    False
+                )
+            ):
+
+                decision_padre = pila[-1][
+                    "nodo"
+                ]
+
 
                 mermaid.append(
                     f"{decision_padre} -->|SÍ| {nodo}"
                 )
 
-                pila[-1]["esperando_inicio_si"] = False
 
-            elif pila and pila[-1].get("esperando_inicio_no", False):
+                pila[-1][
+                    "esperando_inicio_si"
+                ] = False
 
-                decision_padre = pila[-1]["nodo"]
+
+            elif (
+                pila
+                and pila[-1].get(
+                    "esperando_inicio_no",
+                    False
+                )
+            ):
+
+                decision_padre = pila[-1][
+                    "nodo"
+                ]
+
 
                 mermaid.append(
                     f"{decision_padre} -->|NO| {nodo}"
                 )
 
-                pila[-1]["esperando_inicio_no"] = False
+
+                pila[-1][
+                    "esperando_inicio_no"
+                ] = False
+
 
             else:
 
                 mermaid.append(
                     f"{anterior} --> {nodo}"
                 )
+
 
             pila.append({
                 "tipo": "si",
@@ -1704,9 +1941,15 @@ def generar_diagrama(
                 "esperando_inicio_no": False
             })
 
+
             anterior = nodo
 
             continue
+
+
+        # ----------------------------------------------------
+        # SINO
+        # ----------------------------------------------------
 
         if mayus in (
             "SINO",
@@ -1717,17 +1960,33 @@ def generar_diagrama(
 
                 actual = pila[-1]
 
-              
-                actual["fin_si"] = anterior
 
-                actual["tiene_sino"] = True
+                actual[
+                    "fin_si"
+                ] = anterior
 
-                actual["esperando_inicio_no"] = True
 
-                anterior = actual["nodo"]
+                actual[
+                    "tiene_sino"
+                ] = True
+
+
+                actual[
+                    "esperando_inicio_no"
+                ] = True
+
+
+                anterior = actual[
+                    "nodo"
+                ]
+
 
             continue
 
+
+        # ----------------------------------------------------
+        # FIN SI
+        # ----------------------------------------------------
 
         if mayus in (
             "FINSI",
@@ -1738,23 +1997,33 @@ def generar_diagrama(
 
                 actual = pila.pop()
 
-                decision = actual["nodo"]
+                decision = actual[
+                    "nodo"
+                ]
 
 
-                if actual["tiene_sino"]:
+                if actual[
+                    "tiene_sino"
+                ]:
 
-                    actual["fin_no"] = anterior
+                    actual[
+                        "fin_no"
+                    ] = anterior
+
 
                     contador += 1
 
                     union = f"n{contador}"
 
+
                     mermaid.append(
                         f'{union}(( )):::union'
                     )
 
-                    
-                    if actual["fin_si"]:
+
+                    if actual[
+                        "fin_si"
+                    ]:
 
                         mermaid.append(
                             f'{actual["fin_si"]} --> {union}'
@@ -1766,8 +2035,10 @@ def generar_diagrama(
                             f"{decision} -->|SÍ| {union}"
                         )
 
-                    
-                    if actual["fin_no"]:
+
+                    if actual[
+                        "fin_no"
+                    ]:
 
                         mermaid.append(
                             f'{actual["fin_no"]} --> {union}'
@@ -1779,6 +2050,7 @@ def generar_diagrama(
                             f"{decision} -->|NO| {union}"
                         )
 
+
                     anterior = union
 
 
@@ -1788,24 +2060,31 @@ def generar_diagrama(
 
                     union = f"n{contador}"
 
+
                     mermaid.append(
                         f'{union}(( )):::union'
                     )
 
-                    # Fin de la rama verdadera
+
                     mermaid.append(
                         f"{anterior} --> {union}"
                     )
 
-                    # Rama falsa va directamente a la unión
+
                     mermaid.append(
                         f"{decision} -->|NO| {union}"
                     )
 
+
                     anterior = union
+
 
             continue
 
+
+        # ----------------------------------------------------
+        # PARA
+        # ----------------------------------------------------
 
         coincidencia = re.match(
             r"^Para\s+(\w+)",
@@ -1813,59 +2092,44 @@ def generar_diagrama(
             flags=re.IGNORECASE
         )
 
+
         if coincidencia:
 
-            variable = (
-                coincidencia.group(1)
+            variable = coincidencia.group(
+                1
             )
+
 
             contador += 1
 
             nodo = f"n{contador}"
 
+
             mermaid.append(
                 f'{nodo}{{"PARA<br/>{variable}"}}:::para'
             )
 
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision = pila[-1]["nodo"]
+            conectar_nodo(
+                nodo
+            )
 
-                mermaid.append(
-                    f"{decision} -->|SÍ| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_si"] = False
-
-            elif pila and pila[-1].get("esperando_inicio_no", False):
-
-                decision = pila[-1]["nodo"]
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_no"] = False
-
-            else:
-
-                mermaid.append(
-                    f"{anterior} --> {nodo}"
-                )
-
-            anterior = nodo
 
             continue
 
 
+        # ----------------------------------------------------
+        # MIENTRAS
+        # ----------------------------------------------------
 
         if mayus.startswith(
             "MIENTRAS "
         ):
 
-            condicion = (
-                linea[9:].strip()
-            )
+            condicion = linea[
+                9:
+            ].strip()
+
 
             condicion = re.sub(
                 r"\s+Hacer$",
@@ -1874,49 +2138,33 @@ def generar_diagrama(
                 flags=re.IGNORECASE
             )
 
+
             condicion = escapar_mermaid(
                 condicion
             )
+
 
             contador += 1
 
             nodo = f"n{contador}"
 
+
             mermaid.append(
                 f'{nodo}{{"MIENTRAS<br/>{condicion}"}}:::mientras'
             )
 
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision = pila[-1]["nodo"]
+            conectar_nodo(
+                nodo
+            )
 
-                mermaid.append(
-                    f"{decision} -->|SÍ| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_si"] = False
-
-            elif pila and pila[-1].get("esperando_inicio_no", False):
-
-                decision = pila[-1]["nodo"]
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_no"] = False
-
-            else:
-
-                mermaid.append(
-                    f"{anterior} --> {nodo}"
-                )
-
-            anterior = nodo
 
             continue
 
 
+        # ----------------------------------------------------
+        # REPETIR
+        # ----------------------------------------------------
 
         if mayus == "REPETIR":
 
@@ -1924,40 +2172,23 @@ def generar_diagrama(
 
             nodo = f"n{contador}"
 
+
             mermaid.append(
                 f'{nodo}{{"REPETIR"}}:::repetir'
             )
 
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision = pila[-1]["nodo"]
+            conectar_nodo(
+                nodo
+            )
 
-                mermaid.append(
-                    f"{decision} -->|SÍ| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_si"] = False
-
-            elif pila and pila[-1].get("esperando_inicio_no", False):
-
-                decision = pila[-1]["nodo"]
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_no"] = False
-
-            else:
-
-                mermaid.append(
-                    f"{anterior} --> {nodo}"
-                )
-
-            anterior = nodo
 
             continue
 
+
+        # ----------------------------------------------------
+        # ASIGNACIÓN
+        # ----------------------------------------------------
 
         if "<-" in linea:
 
@@ -1966,51 +2197,33 @@ def generar_diagrama(
                 1
             )
 
+
             texto = (
                 partes[0].strip()
                 + " ← "
                 + partes[1].strip()
             )
 
+
             texto = escapar_mermaid(
                 texto
             )
+
 
             contador += 1
 
             nodo = f"n{contador}"
 
+
             mermaid.append(
                 f'{nodo}["{texto}"]:::asignacion'
             )
 
-            if pila and pila[-1].get("esperando_inicio_si", False):
 
-                decision = pila[-1]["nodo"]
+            conectar_nodo(
+                nodo
+            )
 
-                mermaid.append(
-                    f"{decision} -->|SÍ| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_si"] = False
-
-            elif pila and pila[-1].get("esperando_inicio_no", False):
-
-                decision = pila[-1]["nodo"]
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-                pila[-1]["esperando_inicio_no"] = False
-
-            else:
-
-                mermaid.append(
-                    f"{anterior} --> {nodo}"
-                )
-
-            anterior = nodo
 
             continue
 
@@ -2019,21 +2232,24 @@ def generar_diagrama(
 
     fin = f"n{contador}"
 
+
     mermaid.append(
         f'{fin}(["FIN"]):::inicio'
     )
+
 
     mermaid.append(
         f"{anterior} --> {fin}"
     )
 
+
     return "\n".join(
         mermaid
     )
 
+
 # ============================================================
-# API Ejercicios 
-# se enlista los ejercicio guardados 
+# API EJERCICIOS - OBTENER
 # ============================================================
 
 @app.route(
@@ -2058,9 +2274,7 @@ def obtener_ejercicios():
     """)
 
 
-    filas = (
-        cursor.fetchall()
-    )
+    filas = cursor.fetchall()
 
 
     cursor.close()
@@ -2089,6 +2303,9 @@ def obtener_ejercicios():
     ])
 
 
+# ============================================================
+# API EJERCICIOS - CREAR
+# ============================================================
 
 @app.route(
     "/api/ejercicios",
@@ -2118,7 +2335,6 @@ def crear_ejercicio():
     cursor = conn.cursor()
 
 
-
     if USAR_POSTGRES:
 
         cursor.execute(
@@ -2135,15 +2351,11 @@ def crear_ejercicio():
         )
 
 
-        fila = (
-            cursor.fetchone()
-        )
+        fila = cursor.fetchone()
 
-
-        nuevo_id = (
-            fila["id"]
-        )
-
+        nuevo_id = fila[
+            "id"
+        ]
 
 
     else:
@@ -2161,9 +2373,7 @@ def crear_ejercicio():
         )
 
 
-        nuevo_id = (
-            cursor.lastrowid
-        )
+        nuevo_id = cursor.lastrowid
 
 
     conn.commit()
@@ -2180,8 +2390,7 @@ def crear_ejercicio():
 
 
 # ============================================================
-# API Ejercicio
-# Si se edita algun ejercicio se guarda la actualizacion del mismo.  
+# API EJERCICIOS - ACTUALIZAR
 # ============================================================
 
 @app.route(
@@ -2261,8 +2470,7 @@ def actualizar_ejercicio(id):
 
 
 # ============================================================
-# API Ejercicio
-# Permite eliminar los ejercicios. 
+# API EJERCICIOS - ELIMINAR
 # ============================================================
 
 @app.route(
@@ -2310,6 +2518,9 @@ def eliminar_ejercicio(id):
     })
 
 
+# ============================================================
+# API ENTRADAS
+# ============================================================
 
 @app.route(
     "/api/entradas",
@@ -2331,10 +2542,14 @@ def entradas():
 
 
     return jsonify({
-        "variables": variables
+        "variables":
+            variables
     })
 
 
+# ============================================================
+# API EJECUTAR
+# ============================================================
 
 @app.route(
     "/api/ejecutar",
@@ -2399,8 +2614,7 @@ def ejecutar():
 
 
 # ============================================================
-# API Diagrama
-# Permite que se ejecuten los diagramas
+# API DIAGRAMA
 # ============================================================
 
 @app.route(
@@ -2440,6 +2654,10 @@ def diagrama():
         }), 400
 
 
+# ============================================================
+# PÁGINA PRINCIPAL
+# ============================================================
+
 @app.route("/")
 def index():
 
@@ -2448,8 +2666,16 @@ def index():
     )
 
 
+# ============================================================
+# INICIALIZAR BASE
+# ============================================================
+
 init_db()
 
+
+# ============================================================
+# ABRIR NAVEGADOR LOCAL
+# ============================================================
 
 def abrir_navegador():
 
@@ -2458,6 +2684,9 @@ def abrir_navegador():
     )
 
 
+# ============================================================
+# EJECUTAR LOCALMENTE
+# ============================================================
 
 if __name__ == "__main__":
 
