@@ -1458,7 +1458,6 @@ def generar_diagrama(
 
     mermaid = []
 
-
     mermaid.append(
         "flowchart TD"
     )
@@ -1496,19 +1495,19 @@ def generar_diagrama(
         "classDef repetir fill:#ec4899,stroke:#be185d,color:#ffffff,stroke-width:2px"
     )
 
+    mermaid.append(
+        "classDef union fill:#a855f7,stroke:#7e22ce,color:#a855f7,stroke-width:2px"
+    )
 
     contador = 0
-
 
     mermaid.append(
         'inicio(["INICIO"]):::inicio'
     )
 
-
     anterior = "inicio"
 
     pila = []
-
 
     for linea in lineas:
 
@@ -1516,11 +1515,9 @@ def generar_diagrama(
             linea
         ).strip()
 
-
         if not linea:
 
             continue
-
 
         mayus = linea.upper()
 
@@ -1531,17 +1528,16 @@ def generar_diagrama(
 
             continue
 
-
         if mayus == "FINALGORITMO":
 
             continue
-
 
         if mayus.startswith(
             "DEFINIR"
         ):
 
             continue
+
 
 
         if mayus.startswith(
@@ -1552,31 +1548,48 @@ def generar_diagrama(
                 linea[5:].strip()
             )
 
-
             contador += 1
 
             nodo = f"n{contador}"
-
 
             texto = escapar_mermaid(
                 f"LEER<br/>{variable}"
             )
 
-
             mermaid.append(
                 f'{nodo}["{texto}"]:::leer'
             )
 
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+           
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             anterior = nodo
 
             continue
-
 
 
         if mayus.startswith(
@@ -1587,26 +1600,43 @@ def generar_diagrama(
                 linea[8:].strip()
             )
 
-
             texto = escapar_mermaid(
                 f"ESCRIBIR<br/>{texto}"
             )
-
 
             contador += 1
 
             nodo = f"n{contador}"
 
-
             mermaid.append(
                 f'{nodo}["{texto}"]:::escribir'
             )
 
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             anterior = nodo
 
@@ -1619,45 +1649,64 @@ def generar_diagrama(
             flags=re.IGNORECASE
         )
 
-
         if coincidencia:
 
             condicion = (
                 coincidencia.group(1)
             )
 
-
             condicion = escapar_mermaid(
                 condicion
             )
-
 
             contador += 1
 
             nodo = f"n{contador}"
 
-
             mermaid.append(
                 f'{nodo}{{"{condicion}"}}:::decision'
             )
 
+            # Si este SI está dentro de otra rama
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision_padre = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision_padre} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision_padre = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision_padre} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             pila.append({
                 "tipo": "si",
                 "nodo": nodo,
-                "salida_no": None
+                "fin_si": None,
+                "fin_no": None,
+                "tiene_sino": False,
+                "esperando_inicio_si": True,
+                "esperando_inicio_no": False
             })
-
 
             anterior = nodo
 
             continue
-
 
         if mayus in (
             "SINO",
@@ -1666,37 +1715,16 @@ def generar_diagrama(
 
             if pila:
 
-                actual = (
-                    pila[-1]
-                )
+                actual = pila[-1]
 
-                decision = (
-                    actual["nodo"]
-                )
+              
+                actual["fin_si"] = anterior
 
+                actual["tiene_sino"] = True
 
-                contador += 1
+                actual["esperando_inicio_no"] = True
 
-                nodo = f"n{contador}"
-
-
-                mermaid.append(
-                    f'{nodo}["NO"]:::decision'
-                )
-
-
-                mermaid.append(
-                    f"{decision} -->|NO| {nodo}"
-                )
-
-
-                actual[
-                    "salida_no"
-                ] = nodo
-
-
-                anterior = nodo
-
+                anterior = actual["nodo"]
 
             continue
 
@@ -1708,50 +1736,73 @@ def generar_diagrama(
 
             if pila:
 
-                actual = (
-                    pila.pop()
-                )
+                actual = pila.pop()
 
-                decision = (
-                    actual["nodo"]
-                )
+                decision = actual["nodo"]
 
 
-                if actual[
-                    "salida_no"
-                ] is None:
+                if actual["tiene_sino"]:
+
+                    actual["fin_no"] = anterior
+
+                    contador += 1
+
+                    union = f"n{contador}"
 
                     mermaid.append(
-                        f"{decision} -->|SÍ| {anterior}"
+                        f'{union}(( )):::union'
                     )
+
+                    
+                    if actual["fin_si"]:
+
+                        mermaid.append(
+                            f'{actual["fin_si"]} --> {union}'
+                        )
+
+                    else:
+
+                        mermaid.append(
+                            f"{decision} -->|SÍ| {union}"
+                        )
+
+                    
+                    if actual["fin_no"]:
+
+                        mermaid.append(
+                            f'{actual["fin_no"]} --> {union}'
+                        )
+
+                    else:
+
+                        mermaid.append(
+                            f"{decision} -->|NO| {union}"
+                        )
+
+                    anterior = union
 
 
                 else:
 
                     contador += 1
 
-                    union = (
-                        f"n{contador}"
-                    )
-
+                    union = f"n{contador}"
 
                     mermaid.append(
-                        f'{union}(( )):::decision'
+                        f'{union}(( )):::union'
                     )
 
-
-                    mermaid.append(
-                        f"{decision} -->|SÍ| {union}"
-                    )
-
-
+                    # Fin de la rama verdadera
                     mermaid.append(
                         f"{anterior} --> {union}"
                     )
 
+                    # Rama falsa va directamente a la unión
+                    mermaid.append(
+                        f"{decision} -->|NO| {union}"
+                    )
 
                     anterior = union
-
 
             continue
 
@@ -1762,32 +1813,50 @@ def generar_diagrama(
             flags=re.IGNORECASE
         )
 
-
         if coincidencia:
 
             variable = (
                 coincidencia.group(1)
             )
 
-
             contador += 1
 
             nodo = f"n{contador}"
-
 
             mermaid.append(
                 f'{nodo}{{"PARA<br/>{variable}"}}:::para'
             )
 
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             anterior = nodo
 
             continue
+
 
 
         if mayus.startswith(
@@ -1798,7 +1867,6 @@ def generar_diagrama(
                 linea[9:].strip()
             )
 
-
             condicion = re.sub(
                 r"\s+Hacer$",
                 "",
@@ -1806,30 +1874,48 @@ def generar_diagrama(
                 flags=re.IGNORECASE
             )
 
-
             condicion = escapar_mermaid(
                 condicion
             )
-
 
             contador += 1
 
             nodo = f"n{contador}"
 
-
             mermaid.append(
                 f'{nodo}{{"MIENTRAS<br/>{condicion}"}}:::mientras'
             )
 
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             anterior = nodo
 
             continue
+
 
 
         if mayus == "REPETIR":
@@ -1838,16 +1924,35 @@ def generar_diagrama(
 
             nodo = f"n{contador}"
 
-
             mermaid.append(
                 f'{nodo}{{"REPETIR"}}:::repetir'
             )
 
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             anterior = nodo
 
@@ -1861,33 +1966,49 @@ def generar_diagrama(
                 1
             )
 
-
             texto = (
                 partes[0].strip()
                 + " ← "
                 + partes[1].strip()
             )
 
-
             texto = escapar_mermaid(
                 texto
             )
-
 
             contador += 1
 
             nodo = f"n{contador}"
 
-
             mermaid.append(
                 f'{nodo}["{texto}"]:::asignacion'
             )
 
+            if pila and pila[-1].get("esperando_inicio_si", False):
 
-            mermaid.append(
-                f"{anterior} --> {nodo}"
-            )
+                decision = pila[-1]["nodo"]
 
+                mermaid.append(
+                    f"{decision} -->|SÍ| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_si"] = False
+
+            elif pila and pila[-1].get("esperando_inicio_no", False):
+
+                decision = pila[-1]["nodo"]
+
+                mermaid.append(
+                    f"{decision} -->|NO| {nodo}"
+                )
+
+                pila[-1]["esperando_inicio_no"] = False
+
+            else:
+
+                mermaid.append(
+                    f"{anterior} --> {nodo}"
+                )
 
             anterior = nodo
 
@@ -1898,21 +2019,17 @@ def generar_diagrama(
 
     fin = f"n{contador}"
 
-
     mermaid.append(
         f'{fin}(["FIN"]):::inicio'
     )
-
 
     mermaid.append(
         f"{anterior} --> {fin}"
     )
 
-
     return "\n".join(
         mermaid
     )
-
 
 # ============================================================
 # API Ejercicios 
