@@ -1,6 +1,6 @@
 // ============================================================
 // Este JS permite que se ejecuten las instrucciones del app.py
-// Es lo que permite la interaccion entre el usuario y la intefasaz
+// Es lo que permite la interacción entre el usuario y la interfaz
 // ============================================================
 
 let ejercicioActualId = null;
@@ -25,13 +25,11 @@ const listaEjercicios =
     document.getElementById("listaEjercicios");
 
 
-
 mermaid.initialize({
     startOnLoad: false,
     securityLevel: "loose",
     theme: "default"
 });
-
 
 
 document.addEventListener(
@@ -44,8 +42,6 @@ document.addEventListener(
 
     }
 );
-
-
 
 function nuevoEjercicio() {
 
@@ -74,7 +70,6 @@ function nuevoEjercicio() {
     `;
 }
 
-
 async function detectarEntradas() {
 
     const codigo =
@@ -91,6 +86,11 @@ async function detectarEntradas() {
         return [];
     }
 
+
+    const valoresAnteriores =
+        obtenerValoresEntrada();
+
+
     try {
 
         const respuesta =
@@ -105,10 +105,12 @@ async function detectarEntradas() {
                     },
 
                     body: JSON.stringify({
-                        pseudocodigo: codigo
+                        pseudocodigo:
+                            codigo
                     })
                 }
             );
+
 
         if (!respuesta.ok) {
 
@@ -117,28 +119,58 @@ async function detectarEntradas() {
             );
         }
 
+
         const datos =
             await respuesta.json();
 
-        mostrarEntradas(
-            datos.variables || []
+
+        const esquema =
+            (
+                datos.variables ||
+                []
+            ).map(
+                function (variable) {
+
+                    return {
+                        variable:
+                            variable,
+
+                        cantidad:
+                            1
+                    };
+
+                }
+            );
+
+
+        mostrarEsquemaEntradas(
+            esquema,
+            valoresAnteriores
         );
+
 
         return datos.variables || [];
 
+
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
         return [];
     }
 }
 
+function mostrarEsquemaEntradas(
+    esquema,
+    valoresAnteriores = {}
+) {
 
-
-function mostrarEntradas(variables) {
-
-    if (!variables.length) {
+    if (
+        !esquema ||
+        esquema.length === 0
+    ) {
 
         entradas.innerHTML = `
             <div class="empty">
@@ -149,72 +181,475 @@ function mostrarEntradas(variables) {
         return;
     }
 
+
     entradas.innerHTML = "";
 
-    variables.forEach(
-        function (variable) {
 
-            const fila =
-                document.createElement("div");
+    esquema.forEach(
+        function (item) {
 
-            fila.className =
-                "input-row";
+            const variable =
+                item.variable;
 
-            const label =
-                document.createElement("label");
+            const cantidad =
+                Math.max(
+                    1,
+                    Number(
+                        item.cantidad
+                    ) || 1
+                );
 
-            label.textContent =
-                variable;
 
-            const input =
-                document.createElement("input");
+            let anteriores =
+                valoresAnteriores[
+                    variable
+                ];
 
-            input.type = "text";
 
-            input.dataset.variable =
-                variable;
+            if (
+                anteriores === undefined
+                ||
+                anteriores === null
+            ) {
 
-            input.placeholder =
-                "Valor";
+                anteriores = [];
 
-            fila.appendChild(label);
+            }
 
-            fila.appendChild(input);
+            else if (
+                !Array.isArray(
+                    anteriores
+                )
+            ) {
 
-            entradas.appendChild(fila);
+                anteriores = [
+                    anteriores
+                ];
+            }
+
+
+            for (
+                let indice = 0;
+                indice < cantidad;
+                indice++
+            ) {
+
+                const fila =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                fila.className =
+                    "input-row";
+
+
+                const label =
+                    document.createElement(
+                        "label"
+                    );
+
+
+                if (
+                    cantidad > 1
+                ) {
+
+                    label.textContent =
+                        variable
+                        + " "
+                        + (
+                            indice + 1
+                        );
+
+                } else {
+
+                    label.textContent =
+                        variable;
+                }
+
+
+                const input =
+                    document.createElement(
+                        "input"
+                    );
+
+
+                input.type =
+                    "text";
+
+
+                input.dataset.variable =
+                    variable;
+
+
+                input.dataset.indice =
+                    String(
+                        indice
+                    );
+
+
+                if (
+                    cantidad > 1
+                ) {
+
+                    input.placeholder =
+                        "Valor "
+                        + (
+                            indice + 1
+                        );
+
+                } else {
+
+                    input.placeholder =
+                        "Valor";
+                }
+
+
+                if (
+                    indice
+                    < anteriores.length
+                ) {
+
+                    input.value =
+                        anteriores[
+                            indice
+                        ] ?? "";
+                }
+
+
+                fila.appendChild(
+                    label
+                );
+
+
+                fila.appendChild(
+                    input
+                );
+
+
+                entradas.appendChild(
+                    fila
+                );
+            }
         }
     );
 }
 
-
-
 function obtenerValoresEntrada() {
 
-    const valores = {};
+    const grupos = {};
+
 
     const inputs =
         entradas.querySelectorAll(
             "input[data-variable]"
         );
 
+
     inputs.forEach(
         function (input) {
 
-            valores[
-                input.dataset.variable
-            ] = input.value;
+            const variable =
+                input.dataset.variable;
+
+
+            if (
+                !grupos[
+                    variable
+                ]
+            ) {
+
+                grupos[
+                    variable
+                ] = [];
+            }
+
+
+            grupos[
+                variable
+            ].push(
+                input.value
+            );
 
         }
     );
 
+
+    const valores = {};
+
+
+    Object.entries(
+        grupos
+    ).forEach(
+        function (
+            [
+                variable,
+                lista
+            ]
+        ) {
+
+            if (
+                lista.length === 1
+            ) {
+
+                valores[
+                    variable
+                ] = lista[0];
+
+            } else {
+
+                valores[
+                    variable
+                ] = lista;
+            }
+
+        }
+    );
+
+
     return valores;
 }
 
+function obtenerCantidadesActuales() {
+
+    const cantidades = {};
+
+
+    const inputs =
+        entradas.querySelectorAll(
+            "input[data-variable]"
+        );
+
+
+    inputs.forEach(
+        function (input) {
+
+            const variable =
+                input.dataset.variable;
+
+
+            cantidades[
+                variable
+            ] =
+                (
+                    cantidades[
+                        variable
+                    ] || 0
+                )
+                + 1;
+
+        }
+    );
+
+
+    return cantidades;
+}
+
+function esquemaCambio(
+    esquema
+) {
+
+    const actuales =
+        obtenerCantidadesActuales();
+
+
+    for (
+        const item
+        of esquema
+    ) {
+
+        const cantidad =
+            Math.max(
+                1,
+                Number(
+                    item.cantidad
+                ) || 1
+            );
+
+
+        if (
+            (
+                actuales[
+                    item.variable
+                ] || 0
+            )
+            !== cantidad
+        ) {
+
+            return true;
+        }
+    }
+
+
+    const variablesEsquema =
+        esquema.map(
+            function (item) {
+
+                return item.variable;
+            }
+        );
+
+
+    for (
+        const variable
+        of Object.keys(
+            actuales
+        )
+    ) {
+
+        if (
+            !variablesEsquema.includes(
+                variable
+            )
+        ) {
+
+            return true;
+        }
+    }
+
+
+    return false;
+}
+
+async function prepararEntradasRepetidas() {
+
+    const codigo =
+        pseudocodigo.value.trim();
+
+
+    const valores =
+        obtenerValoresEntrada();
+
+
+    try {
+
+        const respuesta =
+            await fetch(
+                "/api/preparar_entradas",
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            pseudocodigo:
+                                codigo,
+
+                            entradas:
+                                valores
+                        })
+                }
+            );
+
+
+        const datos =
+            await respuesta.json();
+
+
+        if (
+            !respuesta.ok
+            ||
+            !datos.ok
+        ) {
+
+            throw new Error(
+                datos.error
+                ||
+                "No se pudieron preparar las entradas."
+            );
+        }
+
+
+        const esquema =
+            datos.esquema || [];
+
+
+        if (
+            esquemaCambio(
+                esquema
+            )
+        ) {
+
+            mostrarEsquemaEntradas(
+                esquema,
+                valores
+            );
+
+
+            resultados.innerHTML = `
+                <div class="empty">
+                    Se detectaron entradas repetidas.
+                    Completa todos los valores solicitados
+                    y vuelve a presionar Ejecutar.
+                </div>
+            `;
+
+
+            return false;
+        }
+
+
+        return true;
+
+
+    } catch (error) {
+
+        console.error(
+            error
+        );
+
+
+        resultados.innerHTML = `
+            <div class="result-line error">
+                Error:
+                ${escapeHtml(
+                    error.message
+                )}
+            </div>
+        `;
+
+
+        return false;
+    }
+}
+
+function existenEntradasVacias() {
+
+    const inputs =
+        entradas.querySelectorAll(
+            "input[data-variable]"
+        );
+
+
+    for (
+        const input
+        of inputs
+    ) {
+
+        if (
+            input.value.trim() === ""
+        ) {
+
+            input.focus();
+
+            return true;
+        }
+    }
+
+
+    return false;
+}
 
 async function ejecutarAlgoritmo() {
 
     const codigo =
         pseudocodigo.value.trim();
+
 
     if (!codigo) {
 
@@ -232,16 +667,36 @@ async function ejecutarAlgoritmo() {
         );
 
 
-    if (inputsExistentes.length === 0) {
+    if (
+        inputsExistentes.length === 0
+    ) {
 
         await detectarEntradas();
     }
 
+    const listo =
+        await prepararEntradasRepetidas();
+
+
+    if (!listo) {
+
+        return;
+    }
+
+    if (
+        existenEntradasVacias()
+    ) {
+
+        alert(
+            "Completa todos los valores de entrada."
+        );
+
+        return;
+    }
 
 
     const valores =
         obtenerValoresEntrada();
-
 
 
     resultados.innerHTML = `
@@ -257,20 +712,22 @@ async function ejecutarAlgoritmo() {
             await fetch(
                 "/api/ejecutar",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
 
-                    body: JSON.stringify({
+                    body:
+                        JSON.stringify({
+                            pseudocodigo:
+                                codigo,
 
-                        pseudocodigo: codigo,
-
-                        entradas: valores
-
-                    })
+                            entradas:
+                                valores
+                        })
                 }
             );
 
@@ -279,38 +736,48 @@ async function ejecutarAlgoritmo() {
             await respuesta.json();
 
 
-        if (!respuesta.ok || !datos.ok) {
+        if (
+            !respuesta.ok
+            ||
+            !datos.ok
+        ) {
 
             throw new Error(
-                datos.error ||
+                datos.error
+                ||
                 "No se pudo ejecutar el algoritmo."
             );
         }
 
 
-
-        mostrarResultados(datos);
+        mostrarResultados(
+            datos
+        );
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
+
 
         resultados.innerHTML = `
             <div class="result-line error">
-                Error: ${escapeHtml(error.message)}
+                Error:
+                ${escapeHtml(
+                    error.message
+                )}
             </div>
         `;
     }
 }
 
-
-
-
-function mostrarResultados(datos) {
+function mostrarResultados(
+    datos
+) {
 
     let html = "";
-
 
 
     html += `
@@ -321,64 +788,25 @@ function mostrarResultados(datos) {
 
 
     if (
-        datos.salidas &&
+        datos.salidas
+        &&
         datos.salidas.length > 0
     ) {
 
         datos.salidas.forEach(
             function (salida) {
 
-                let texto =
-                    String(salida);
-
-
-                let encontrado = false;
-
-
-                if (datos.entradas) {
-
-                    Object.entries(
-                        datos.entradas
-                    ).forEach(
-                        function ([nombre, valor]) {
-
-                            if (encontrado) {
-                                return;
-                            }
-
-
-
-                            const patron =
-                                new RegExp(
-                                    "^\\s*Ingrese\\s+" +
-                                    escapeRegExp(nombre) +
-                                    "\\s*:?\\s*$",
-                                    "i"
-                                );
-
-
-                            if (
-                                patron.test(texto)
-                            ) {
-
-                                texto =
-                                    "Ingrese " +
-                                    nombre +
-                                    ": " +
-                                    String(valor);
-
-                                encontrado = true;
-                            }
-
-                        }
+                const texto =
+                    String(
+                        salida
                     );
-                }
-
 
 
                 html += `
                     <div class="result-line">
-                        ${escapeHtml(texto)}
+                        ${escapeHtml(
+                            texto
+                        )}
                     </div>
                 `;
 
@@ -392,12 +820,12 @@ function mostrarResultados(datos) {
                 El algoritmo no produjo salida.
             </div>
         `;
-
     }
 
 
-
-    if (datos.variables) {
+    if (
+        datos.variables
+    ) {
 
         const variables =
             Object.entries(
@@ -405,7 +833,9 @@ function mostrarResultados(datos) {
             );
 
 
-        if (variables.length > 0) {
+        if (
+            variables.length > 0
+        ) {
 
             html += `
                 <div class="variables">
@@ -417,18 +847,27 @@ function mostrarResultados(datos) {
 
 
             variables.forEach(
-                function ([nombre, valor]) {
+                function (
+                    [
+                        nombre,
+                        valor
+                    ]
+                ) {
 
                     html += `
                         <div class="variable">
 
                             <span>
-                                ${escapeHtml(nombre)}
+                                ${escapeHtml(
+                                    nombre
+                                )}
                             </span>
 
                             <span>
                                 ${escapeHtml(
-                                    String(valor)
+                                    String(
+                                        valor
+                                    )
                                 )}
                             </span>
 
@@ -442,26 +881,13 @@ function mostrarResultados(datos) {
             html += `
                 </div>
             `;
-
         }
-
     }
 
 
-
-    resultados.innerHTML = html;
+    resultados.innerHTML =
+        html;
 }
-
-function escapeRegExp(texto) {
-
-    return String(texto).replace(
-        /[.*+?^${}()|[\]\\]/g,
-        "\\$&"
-    );
-
-}
-
-
 
 async function generarDiagrama() {
 
@@ -492,16 +918,19 @@ async function generarDiagrama() {
             await fetch(
                 "/api/diagrama",
                 {
-                    method: "POST",
+                    method:
+                        "POST",
 
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
 
-                    body: JSON.stringify({
-                        pseudocodigo: codigo
-                    })
+                    body:
+                        JSON.stringify({
+                            pseudocodigo:
+                                codigo
+                        })
                 }
             );
 
@@ -510,10 +939,15 @@ async function generarDiagrama() {
             await respuesta.json();
 
 
-        if (!respuesta.ok || !datos.ok) {
+        if (
+            !respuesta.ok
+            ||
+            !datos.ok
+        ) {
 
             throw new Error(
-                datos.error ||
+                datos.error
+                ||
                 "No se pudo generar el diagrama."
             );
         }
@@ -538,7 +972,10 @@ async function generarDiagrama() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
+
 
         diagrama.innerHTML = `
             <div class="empty">
@@ -550,7 +987,6 @@ async function generarDiagrama() {
         `;
     }
 }
-
 
 async function guardarEjercicio() {
 
@@ -574,7 +1010,9 @@ async function guardarEjercicio() {
 
     if (!nombre) {
 
-        nombre = "Ejercicio";
+        nombre =
+            "Ejercicio";
+
 
         nombreEjercicio.value =
             nombre;
@@ -583,9 +1021,11 @@ async function guardarEjercicio() {
 
     const datos = {
 
-        nombre: nombre,
+        nombre:
+            nombre,
 
-        pseudocodigo: codigo
+        pseudocodigo:
+            codigo
 
     };
 
@@ -595,13 +1035,16 @@ async function guardarEjercicio() {
         let respuesta;
 
 
-        if (ejercicioActualId) {
+        if (
+            ejercicioActualId
+        ) {
 
             respuesta =
                 await fetch(
                     `/api/ejercicios/${ejercicioActualId}`,
                     {
-                        method: "PUT",
+                        method:
+                            "PUT",
 
                         headers: {
                             "Content-Type":
@@ -609,7 +1052,9 @@ async function guardarEjercicio() {
                         },
 
                         body:
-                            JSON.stringify(datos)
+                            JSON.stringify(
+                                datos
+                            )
                     }
                 );
 
@@ -619,7 +1064,8 @@ async function guardarEjercicio() {
                 await fetch(
                     "/api/ejercicios",
                     {
-                        method: "POST",
+                        method:
+                            "POST",
 
                         headers: {
                             "Content-Type":
@@ -627,7 +1073,9 @@ async function guardarEjercicio() {
                         },
 
                         body:
-                            JSON.stringify(datos)
+                            JSON.stringify(
+                                datos
+                            )
                     }
                 );
         }
@@ -637,16 +1085,23 @@ async function guardarEjercicio() {
             await respuesta.json();
 
 
-        if (!respuesta.ok || !resultado.ok) {
+        if (
+            !respuesta.ok
+            ||
+            !resultado.ok
+        ) {
 
             throw new Error(
-                resultado.error ||
+                resultado.error
+                ||
                 "No se pudo guardar."
             );
         }
 
 
-        if (!ejercicioActualId) {
+        if (
+            !ejercicioActualId
+        ) {
 
             ejercicioActualId =
                 resultado.id;
@@ -663,16 +1118,17 @@ async function guardarEjercicio() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
+
 
         alert(
-            "Error al guardar: " +
-            error.message
+            "Error al guardar: "
+            + error.message
         );
     }
 }
-
-
 
 async function cargarEjercicios() {
 
@@ -684,7 +1140,9 @@ async function cargarEjercicios() {
             );
 
 
-        if (!respuesta.ok) {
+        if (
+            !respuesta.ok
+        ) {
 
             throw new Error(
                 "No se pudieron cargar los ejercicios."
@@ -703,15 +1161,20 @@ async function cargarEjercicios() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
     }
 }
 
 
+function mostrarEjercicios(
+    ejercicios
+) {
 
-function mostrarEjercicios(ejercicios) {
-
-    if (!ejercicios.length) {
+    if (
+        !ejercicios.length
+    ) {
 
         listaEjercicios.innerHTML = `
             <div class="empty">
@@ -723,63 +1186,90 @@ function mostrarEjercicios(ejercicios) {
     }
 
 
-    listaEjercicios.innerHTML = "";
+    listaEjercicios.innerHTML =
+        "";
 
 
     ejercicios.forEach(
         function (ejercicio) {
 
             const item =
-                document.createElement("div");
+                document.createElement(
+                    "div"
+                );
+
 
             item.className =
                 "exercise-item";
 
 
             const info =
-                document.createElement("div");
+                document.createElement(
+                    "div"
+                );
+
 
             info.className =
                 "exercise-info";
 
 
             const nombre =
-                document.createElement("div");
+                document.createElement(
+                    "div"
+                );
+
 
             nombre.className =
                 "exercise-name";
+
 
             nombre.textContent =
                 ejercicio.nombre;
 
 
             const fecha =
-                document.createElement("div");
+                document.createElement(
+                    "div"
+                );
+
 
             fecha.className =
                 "exercise-date";
+
 
             fecha.textContent =
                 ejercicio.fecha || "";
 
 
-            info.appendChild(nombre);
+            info.appendChild(
+                nombre
+            );
 
-            info.appendChild(fecha);
+
+            info.appendChild(
+                fecha
+            );
 
 
             const acciones =
-                document.createElement("div");
+                document.createElement(
+                    "div"
+                );
+
 
             acciones.className =
                 "exercise-actions";
 
 
             const abrir =
-                document.createElement("button");
+                document.createElement(
+                    "button"
+                );
+
 
             abrir.className =
                 "small-btn load-btn";
+
 
             abrir.textContent =
                 "Abrir";
@@ -797,10 +1287,14 @@ function mostrarEjercicios(ejercicios) {
 
 
             const eliminar =
-                document.createElement("button");
+                document.createElement(
+                    "button"
+                );
+
 
             eliminar.className =
                 "small-btn delete-btn";
+
 
             eliminar.textContent =
                 "Eliminar";
@@ -817,25 +1311,38 @@ function mostrarEjercicios(ejercicios) {
             );
 
 
-            acciones.appendChild(abrir);
-
-            acciones.appendChild(eliminar);
-
-
-            item.appendChild(info);
-
-            item.appendChild(acciones);
+            acciones.appendChild(
+                abrir
+            );
 
 
-            listaEjercicios.appendChild(item);
+            acciones.appendChild(
+                eliminar
+            );
+
+
+            item.appendChild(
+                info
+            );
+
+
+            item.appendChild(
+                acciones
+            );
+
+
+            listaEjercicios.appendChild(
+                item
+            );
 
         }
     );
 }
 
 
-
-function cargarEjercicio(ejercicio) {
+function cargarEjercicio(
+    ejercicio
+) {
 
     ejercicioActualId =
         ejercicio.id;
@@ -867,8 +1374,9 @@ function cargarEjercicio(ejercicio) {
 }
 
 
-
-async function eliminarEjercicio(id) {
+async function eliminarEjercicio(
+    id
+) {
 
     const confirmar =
         confirm(
@@ -876,7 +1384,9 @@ async function eliminarEjercicio(id) {
         );
 
 
-    if (!confirmar) {
+    if (
+        !confirmar
+    ) {
 
         return;
     }
@@ -888,7 +1398,8 @@ async function eliminarEjercicio(id) {
             await fetch(
                 `/api/ejercicios/${id}`,
                 {
-                    method: "DELETE"
+                    method:
+                        "DELETE"
                 }
             );
 
@@ -897,16 +1408,23 @@ async function eliminarEjercicio(id) {
             await respuesta.json();
 
 
-        if (!respuesta.ok || !datos.ok) {
+        if (
+            !respuesta.ok
+            ||
+            !datos.ok
+        ) {
 
             throw new Error(
-                datos.error ||
+                datos.error
+                ||
                 "No se pudo eliminar."
             );
         }
 
 
-        if (ejercicioActualId === id) {
+        if (
+            ejercicioActualId === id
+        ) {
 
             nuevoEjercicio();
         }
@@ -917,20 +1435,24 @@ async function eliminarEjercicio(id) {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
+
 
         alert(
-            "Error al eliminar: " +
-            error.message
+            "Error al eliminar: "
+            + error.message
         );
     }
 }
 
 
-
 function limpiarEditor() {
 
-    pseudocodigo.value = "";
+    pseudocodigo.value =
+        "";
+
 
     entradas.innerHTML = `
         <div class="empty">
@@ -938,11 +1460,13 @@ function limpiarEditor() {
         </div>
     `;
 
+
     resultados.innerHTML = `
         <div class="empty">
             Ejecuta el algoritmo para ver los resultados.
         </div>
     `;
+
 
     diagrama.innerHTML = `
         <div class="empty">
@@ -953,30 +1477,64 @@ function limpiarEditor() {
 
 
 
-function escapeHtml(texto) {
+function escapeHtml(
+    texto
+) {
 
-    return String(texto)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    return String(
+        texto
+    )
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        )
+        .replaceAll(
+            '"',
+            "&quot;"
+        )
+        .replaceAll(
+            "'",
+            "&#039;"
+        );
 }
 
 
 
-function escapeHtmlMermaid(texto) {
+function escapeHtmlMermaid(
+    texto
+) {
 
-    return String(texto)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;");
+    return String(
+        texto
+    )
+        .replaceAll(
+            "&",
+            "&amp;"
+        )
+        .replaceAll(
+            "<",
+            "&lt;"
+        )
+        .replaceAll(
+            ">",
+            "&gt;"
+        );
 }
 
 
 
 document
-    .getElementById("btnNuevo")
+    .getElementById(
+        "btnNuevo"
+    )
     .addEventListener(
         "click",
         nuevoEjercicio
@@ -984,7 +1542,9 @@ document
 
 
 document
-    .getElementById("btnGuardar")
+    .getElementById(
+        "btnGuardar"
+    )
     .addEventListener(
         "click",
         guardarEjercicio
@@ -992,7 +1552,9 @@ document
 
 
 document
-    .getElementById("btnEjecutar")
+    .getElementById(
+        "btnEjecutar"
+    )
     .addEventListener(
         "click",
         ejecutarAlgoritmo
@@ -1000,7 +1562,9 @@ document
 
 
 document
-    .getElementById("btnDiagrama")
+    .getElementById(
+        "btnDiagrama"
+    )
     .addEventListener(
         "click",
         generarDiagrama
@@ -1008,12 +1572,13 @@ document
 
 
 document
-    .getElementById("btnLimpiar")
+    .getElementById(
+        "btnLimpiar"
+    )
     .addEventListener(
         "click",
         limpiarEditor
     );
-
 
 
 

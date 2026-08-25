@@ -18,7 +18,6 @@ app = Flask(__name__)
 app.register_blueprint(traductor_bp)
 
 
-
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
 )
@@ -113,7 +112,6 @@ def init_db():
 
     conn.close()
 
-
 def limpiar_linea(linea):
 
     return (
@@ -134,7 +132,6 @@ def quitar_comentarios(linea):
 
     return linea
 
-
 def redon_pseint(valor):
 
     if valor >= 0:
@@ -147,9 +144,7 @@ def redon_pseint(valor):
         valor - 0.5
     )
 
-
 def normalizar_operadores(texto):
-
 
     texto = texto.replace(
         "<>",
@@ -275,6 +270,7 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
+
     texto = texto.replace(
         "^",
         "**"
@@ -294,6 +290,7 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
+
     texto = re.sub(
         r"(?<![<>=!])=(?!=)",
         "==",
@@ -302,8 +299,6 @@ def normalizar_operadores(texto):
 
 
     return texto
-
-
 
 def obtener_funciones_permitidas():
 
@@ -323,8 +318,6 @@ def obtener_funciones_permitidas():
         "True": True,
         "False": False
     }
-
-
 
 def detectar_variables_entrada(
     pseudocodigo
@@ -377,7 +370,6 @@ def detectar_variables_entrada(
 
 
     return variables
-
 
 def convertir_valor(valor):
 
@@ -437,6 +429,27 @@ def convertir_valor(valor):
     return valor
 
 
+def obtener_primer_valor_entrada(
+    valor
+):
+
+    if isinstance(
+        valor,
+        list
+    ):
+
+        if valor:
+
+            return convertir_valor(
+                valor[0]
+            )
+
+        return ""
+
+
+    return convertir_valor(
+        valor
+    )
 
 def evaluar_expresion(
     expresion,
@@ -444,6 +457,7 @@ def evaluar_expresion(
 ):
 
     expresion = expresion.strip()
+
 
     if (
         len(expresion) >= 2
@@ -506,7 +520,6 @@ def evaluar_expresion(
 
         return expresion
 
-
 def evaluar_condicion(
     condicion,
     variables
@@ -560,7 +573,6 @@ def evaluar_condicion(
     except Exception:
 
         return False
-
 
 def dividir_escribir(
     contenido
@@ -626,6 +638,400 @@ def dividir_escribir(
 
     return partes
 
+def buscar_fin_para_lineas(
+    lineas,
+    posicion
+):
+
+    profundidad = 0
+
+
+    for i in range(
+        posicion + 1,
+        len(lineas)
+    ):
+
+        mayus = lineas[
+            i
+        ].upper()
+
+
+        if mayus.startswith(
+            "PARA "
+        ):
+
+            profundidad += 1
+
+
+        if mayus == "FINPARA":
+
+            if profundidad == 0:
+
+                return i
+
+
+            profundidad -= 1
+
+
+    return len(
+        lineas
+    ) - 1
+
+
+def calcular_iteraciones_para(
+    inicio,
+    fin,
+    paso
+):
+
+    try:
+
+        inicio = int(
+            inicio
+        )
+
+        fin = int(
+            fin
+        )
+
+        paso = int(
+            paso
+        )
+
+    except Exception:
+
+        return 1
+
+
+    if paso == 0:
+
+        paso = 1
+
+
+    if paso > 0:
+
+        if inicio > fin:
+
+            return 0
+
+
+        return (
+            (
+                fin - inicio
+            )
+            // paso
+        ) + 1
+
+
+    if inicio < fin:
+
+        return 0
+
+
+    return (
+        (
+            inicio - fin
+        )
+        // abs(paso)
+    ) + 1
+
+
+def preparar_esquema_entradas(
+    pseudocodigo,
+    entradas
+):
+
+    lineas = []
+
+
+    for linea in pseudocodigo.splitlines():
+
+        linea = quitar_comentarios(
+            linea
+        )
+
+        linea = limpiar_linea(
+            linea
+        )
+
+
+        if linea:
+
+            lineas.append(
+                linea
+            )
+
+
+    variables_detectadas = (
+        detectar_variables_entrada(
+            pseudocodigo
+        )
+    )
+
+
+    cantidades = {
+        variable: 0
+        for variable in variables_detectadas
+    }
+
+
+    variables = {}
+
+
+    for nombre, valor in entradas.items():
+
+        variables[
+            nombre
+        ] = obtener_primer_valor_entrada(
+            valor
+        )
+
+
+    def analizar_bloque(
+        inicio,
+        fin,
+        multiplicador=1
+    ):
+
+        i = inicio
+
+
+        while i < fin:
+
+            linea = lineas[i]
+
+            mayus = linea.upper()
+
+            coincidencia = re.match(
+                r"^Leer\s+(.+)$",
+                linea,
+                flags=re.IGNORECASE
+            )
+
+
+            if coincidencia:
+
+                contenido = (
+                    coincidencia.group(1)
+                )
+
+
+                for variable in contenido.split(","):
+
+                    variable = variable.strip()
+
+
+                    if not variable:
+
+                        continue
+
+
+                    cantidades[
+                        variable
+                    ] = (
+                        cantidades.get(
+                            variable,
+                            0
+                        )
+                        + multiplicador
+                    )
+
+
+                    if (
+                        variable in entradas
+                        and variable not in variables
+                    ):
+
+                        variables[
+                            variable
+                        ] = obtener_primer_valor_entrada(
+                            entradas[
+                                variable
+                            ]
+                        )
+
+
+                i += 1
+
+                continue
+
+            coincidencia = re.match(
+                r"^([A-Za-z_][A-Za-z0-9_]*)\s*<-\s*(.+)$",
+                linea
+            )
+
+
+            if coincidencia:
+
+                variable = (
+                    coincidencia.group(1)
+                )
+
+                expresion = (
+                    coincidencia.group(2)
+                )
+
+
+                valor = evaluar_expresion(
+                    expresion,
+                    variables
+                )
+
+
+                variables[
+                    variable
+                ] = valor
+
+
+                i += 1
+
+                continue
+
+
+            # -----------------------------------------------
+            # PARA
+            # -----------------------------------------------
+
+            coincidencia = re.match(
+                r"^Para\s+(\w+)\s*<-\s*(.+?)"
+                r"\s+Hasta\s+(.+?)"
+                r"(?:\s+Con\s+Paso\s+(.+?))?"
+                r"\s+Hacer$",
+                linea,
+                flags=re.IGNORECASE
+            )
+
+
+            if coincidencia:
+
+                variable = (
+                    coincidencia.group(1)
+                )
+
+                inicio_expr = (
+                    coincidencia.group(2)
+                )
+
+                fin_expr = (
+                    coincidencia.group(3)
+                )
+
+                paso_expr = (
+                    coincidencia.group(4)
+                )
+
+
+                inicio_valor = evaluar_expresion(
+                    inicio_expr,
+                    variables
+                )
+
+
+                fin_valor = evaluar_expresion(
+                    fin_expr,
+                    variables
+                )
+
+
+                if paso_expr:
+
+                    paso_valor = evaluar_expresion(
+                        paso_expr,
+                        variables
+                    )
+
+                else:
+
+                    paso_valor = 1
+
+
+                repeticiones = calcular_iteraciones_para(
+                    inicio_valor,
+                    fin_valor,
+                    paso_valor
+                )
+
+
+                fin_para = buscar_fin_para_lineas(
+                    lineas,
+                    i
+                )
+
+
+                analizar_bloque(
+                    i + 1,
+                    fin_para,
+                    multiplicador
+                    * max(
+                        repeticiones,
+                        0
+                    )
+                )
+
+
+                if repeticiones > 0:
+
+                    try:
+
+                        variables[
+                            variable
+                        ] = (
+                            int(
+                                inicio_valor
+                            )
+                            + (
+                                repeticiones - 1
+                            )
+                            * int(
+                                paso_valor
+                            )
+                        )
+
+                    except Exception:
+
+                        pass
+
+
+                i = fin_para + 1
+
+                continue
+
+
+            i += 1
+
+
+    analizar_bloque(
+        0,
+        len(lineas)
+    )
+
+
+    esquema = []
+
+
+    for variable in variables_detectadas:
+
+        cantidad = cantidades.get(
+            variable,
+            0
+        )
+
+
+        if cantidad <= 0:
+
+            cantidad = 1
+
+
+        esquema.append({
+            "variable":
+                variable,
+
+            "cantidad":
+                cantidad
+        })
+
+
+    return esquema
 
 class Ejecutor:
 
@@ -655,17 +1061,44 @@ class Ejecutor:
                     linea
                 )
 
-
         self.variables = {}
+
+        self.entradas_secuencias = {}
+
+        self.indices_lectura = {}
 
 
         for nombre, valor in entradas.items():
 
-            self.variables[
+            if isinstance(
+                valor,
+                list
+            ):
+
+                secuencia = [
+                    convertir_valor(
+                        elemento
+                    )
+                    for elemento in valor
+                ]
+
+            else:
+
+                secuencia = [
+                    convertir_valor(
+                        valor
+                    )
+                ]
+
+
+            self.entradas_secuencias[
                 nombre
-            ] = convertir_valor(
-                valor
-            )
+            ] = secuencia
+
+
+            self.indices_lectura[
+                nombre
+            ] = 0
 
 
         self.salidas = []
@@ -678,6 +1111,54 @@ class Ejecutor:
             len(self.lineas)
         )
 
+    def consumir_entrada(
+        self,
+        variable
+    ):
+
+        secuencia = (
+            self.entradas_secuencias.get(
+                variable,
+                []
+            )
+        )
+
+
+        indice = (
+            self.indices_lectura.get(
+                variable,
+                0
+            )
+        )
+
+
+        if indice >= len(
+            secuencia
+        ):
+
+            raise ValueError(
+                "Falta un valor de entrada para "
+                + variable
+                + "."
+            )
+
+
+        valor = secuencia[
+            indice
+        ]
+
+
+        self.indices_lectura[
+            variable
+        ] = indice + 1
+
+
+        self.variables[
+            variable
+        ] = valor
+
+
+        return valor
 
     def ejecutar_bloque(
         self,
@@ -726,14 +1207,19 @@ class Ejecutor:
 
             if coincidencia:
 
-                contenido = coincidencia.group(1)
+                contenido = (
+                    coincidencia.group(1)
+                )
+
 
                 variables_leer = []
 
 
                 for variable in contenido.split(","):
 
-                    variable = variable.strip()
+                    variable = (
+                        variable.strip()
+                    )
 
 
                     if not variable:
@@ -746,11 +1232,9 @@ class Ejecutor:
                     )
 
 
-                    if variable not in self.variables:
-
-                        self.variables[
-                            variable
-                        ] = ""
+                    self.consumir_entrada(
+                        variable
+                    )
 
 
                 anterior_es_escribir = False
@@ -758,9 +1242,11 @@ class Ejecutor:
 
                 if i > 0:
 
-                    linea_anterior = self.lineas[
-                        i - 1
-                    ]
+                    linea_anterior = (
+                        self.lineas[
+                            i - 1
+                        ]
+                    )
 
 
                     anterior_es_escribir = bool(
@@ -782,9 +1268,11 @@ class Ejecutor:
 
                     for variable in variables_leer:
 
-                        valor = self.variables.get(
-                            variable,
-                            ""
+                        valor = (
+                            self.variables.get(
+                                variable,
+                                ""
+                            )
                         )
 
 
@@ -793,8 +1281,10 @@ class Ejecutor:
                         )
 
 
-                    texto_valores = " ".join(
-                        valores
+                    texto_valores = (
+                        " ".join(
+                            valores
+                        )
                     )
 
 
@@ -829,9 +1319,11 @@ class Ejecutor:
 
                     for variable in variables_leer:
 
-                        valor = self.variables.get(
-                            variable,
-                            ""
+                        valor = (
+                            self.variables.get(
+                                variable,
+                                ""
+                            )
                         )
 
 
@@ -853,7 +1345,9 @@ class Ejecutor:
 
             if coincidencia:
 
-                contenido = coincidencia.group(1)
+                contenido = (
+                    coincidencia.group(1)
+                )
 
 
                 if contenido.strip() == "":
@@ -888,8 +1382,10 @@ class Ejecutor:
                     )
 
 
-                texto_completo = "".join(
-                    valores
+                texto_completo = (
+                    "".join(
+                        valores
+                    )
                 )
 
 
@@ -923,9 +1419,13 @@ class Ejecutor:
 
             if coincidencia:
 
-                variable = coincidencia.group(1)
+                variable = (
+                    coincidencia.group(1)
+                )
 
-                expresion = coincidencia.group(2)
+                expresion = (
+                    coincidencia.group(2)
+                )
 
 
                 valor = evaluar_expresion(
@@ -943,7 +1443,6 @@ class Ejecutor:
 
                 continue
 
-
             coincidencia = re.match(
                 r"^Si\s+(.+?)\s+Entonces$",
                 linea,
@@ -953,11 +1452,15 @@ class Ejecutor:
 
             if coincidencia:
 
-                condicion = coincidencia.group(1)
+                condicion = (
+                    coincidencia.group(1)
+                )
 
 
                 fin_si, posicion_sino = (
-                    self.buscar_fin_si(i)
+                    self.buscar_fin_si(
+                        i
+                    )
                 )
 
 
@@ -969,7 +1472,9 @@ class Ejecutor:
 
                 if resultado:
 
-                    inicio_bloque = i + 1
+                    inicio_bloque = (
+                        i + 1
+                    )
 
 
                     fin_bloque = (
@@ -997,8 +1502,6 @@ class Ejecutor:
 
                 continue
 
-
-
             coincidencia = re.match(
                 r"^Segun\s+(.+?)\s+Hacer$",
                 linea,
@@ -1019,14 +1522,18 @@ class Ejecutor:
                 )
 
 
-                fin_segun = self.buscar_fin_segun(
-                    i
+                fin_segun = (
+                    self.buscar_fin_segun(
+                        i
+                    )
                 )
 
 
-                casos = self.obtener_casos_segun(
-                    i,
-                    fin_segun
+                casos = (
+                    self.obtener_casos_segun(
+                        i,
+                        fin_segun
+                    )
                 )
 
 
@@ -1037,13 +1544,13 @@ class Ejecutor:
 
                 for caso in casos:
 
-
-                    if caso["default"]:
+                    if caso[
+                        "default"
+                    ]:
 
                         bloque_default = caso
 
                         continue
-
 
 
                     for expresion_caso in caso[
@@ -1080,16 +1587,18 @@ class Ejecutor:
                 ):
 
                     self.ejecutar_bloque(
-                        bloque_default["inicio"],
-                        bloque_default["fin"]
+                        bloque_default[
+                            "inicio"
+                        ],
+                        bloque_default[
+                            "fin"
+                        ]
                     )
 
 
                 i = fin_segun + 1
 
                 continue
-
-
 
             coincidencia = re.match(
                 r"^Para\s+(\w+)\s*<-\s*(.+?)"
@@ -1103,13 +1612,21 @@ class Ejecutor:
 
             if coincidencia:
 
-                variable = coincidencia.group(1)
+                variable = (
+                    coincidencia.group(1)
+                )
 
-                inicio_expr = coincidencia.group(2)
+                inicio_expr = (
+                    coincidencia.group(2)
+                )
 
-                fin_expr = coincidencia.group(3)
+                fin_expr = (
+                    coincidencia.group(3)
+                )
 
-                paso_expr = coincidencia.group(4)
+                paso_expr = (
+                    coincidencia.group(4)
+                )
 
 
                 inicio_valor = evaluar_expresion(
@@ -1136,8 +1653,10 @@ class Ejecutor:
                     paso_valor = 1
 
 
-                fin_para = self.buscar_fin_para(
-                    i
+                fin_para = (
+                    self.buscar_fin_para(
+                        i
+                    )
                 )
 
 
@@ -1195,8 +1714,6 @@ class Ejecutor:
 
                 continue
 
-
-
             coincidencia = re.match(
                 r"^Mientras\s+(.+?)\s+Hacer$",
                 linea,
@@ -1206,7 +1723,9 @@ class Ejecutor:
 
             if coincidencia:
 
-                condicion = coincidencia.group(1)
+                condicion = (
+                    coincidencia.group(1)
+                )
 
 
                 fin_mientras = (
@@ -1242,7 +1761,6 @@ class Ejecutor:
 
                 continue
 
-
             if mayus == "REPETIR":
 
                 fin_repetir = (
@@ -1263,9 +1781,11 @@ class Ejecutor:
                     )
 
 
-                    condicion_linea = self.lineas[
-                        fin_repetir
-                    ]
+                    condicion_linea = (
+                        self.lineas[
+                            fin_repetir
+                        ]
+                    )
 
 
                     condicion = re.sub(
@@ -1299,7 +1819,6 @@ class Ejecutor:
 
             i += 1
 
-
     def buscar_fin_si(
         self,
         posicion
@@ -1315,9 +1834,11 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[
-                i
-            ].upper()
+            mayus = (
+                self.lineas[
+                    i
+                ].upper()
+            )
 
 
             if re.match(
@@ -1357,11 +1878,11 @@ class Ejecutor:
 
 
         return (
-            len(self.lineas) - 1,
+            len(
+                self.lineas
+            ) - 1,
             posicion_sino
         )
-
-
 
     def buscar_fin_segun(
         self,
@@ -1376,9 +1897,11 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[
-                i
-            ].upper()
+            mayus = (
+                self.lineas[
+                    i
+                ].upper()
+            )
 
 
             if re.match(
@@ -1403,11 +1926,11 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return len(
-            self.lineas
-        ) - 1
-
-
+        return (
+            len(
+                self.lineas
+            ) - 1
+        )
 
     def obtener_casos_segun(
         self,
@@ -1419,11 +1942,14 @@ class Ejecutor:
 
         etiquetas = []
 
-        # Profundidades internas
         profundidad_si = 0
+
         profundidad_para = 0
+
         profundidad_mientras = 0
+
         profundidad_repetir = 0
+
         profundidad_segun = 0
 
 
@@ -1448,7 +1974,6 @@ class Ejecutor:
 
             if nivel_principal:
 
-                # De Otro Modo:
                 if re.match(
                     r"^De\s+Otro\s+Modo\s*:$",
                     linea,
@@ -1464,9 +1989,6 @@ class Ejecutor:
                     continue
 
 
-                # Caso:
-                # 1:
-                # 1, 3, 5:
                 coincidencia_caso = re.match(
                     r"^(.+?)\s*:$",
                     linea
@@ -1605,17 +2127,25 @@ class Ejecutor:
         ):
 
             inicio_bloque = (
-                etiqueta["posicion"] + 1
+                etiqueta[
+                    "posicion"
+                ]
+                + 1
             )
 
 
-            if indice + 1 < len(
-                etiquetas
+            if (
+                indice + 1
+                < len(
+                    etiquetas
+                )
             ):
 
                 fin_bloque = etiquetas[
                     indice + 1
-                ]["posicion"]
+                ][
+                    "posicion"
+                ]
 
             else:
 
@@ -1624,10 +2154,14 @@ class Ejecutor:
 
             casos.append({
                 "default":
-                    etiqueta["default"],
+                    etiqueta[
+                        "default"
+                    ],
 
                 "valores":
-                    etiqueta["valores"],
+                    etiqueta[
+                        "valores"
+                    ],
 
                 "inicio":
                     inicio_bloque,
@@ -1638,7 +2172,6 @@ class Ejecutor:
 
 
         return casos
-
 
     def buscar_fin_para(
         self,
@@ -1653,9 +2186,11 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[
-                i
-            ].upper()
+            mayus = (
+                self.lineas[
+                    i
+                ].upper()
+            )
 
 
             if mayus.startswith(
@@ -1675,11 +2210,11 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return len(
-            self.lineas
-        ) - 1
-
-
+        return (
+            len(
+                self.lineas
+            ) - 1
+        )
 
     def buscar_fin_mientras(
         self,
@@ -1694,9 +2229,11 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[
-                i
-            ].upper()
+            mayus = (
+                self.lineas[
+                    i
+                ].upper()
+            )
 
 
             if mayus.startswith(
@@ -1716,11 +2253,11 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return len(
-            self.lineas
-        ) - 1
-
-
+        return (
+            len(
+                self.lineas
+            ) - 1
+        )
 
     def buscar_hasta_que(
         self,
@@ -1735,9 +2272,11 @@ class Ejecutor:
             len(self.lineas)
         ):
 
-            mayus = self.lineas[
-                i
-            ].upper()
+            mayus = (
+                self.lineas[
+                    i
+                ].upper()
+            )
 
 
             if mayus == "REPETIR":
@@ -1757,11 +2296,11 @@ class Ejecutor:
                 profundidad -= 1
 
 
-        return len(
-            self.lineas
-        ) - 1
-
-
+        return (
+            len(
+                self.lineas
+            ) - 1
+        )
 
 def ejecutar_pseudocodigo(
     pseudocodigo,
@@ -1784,9 +2323,6 @@ def ejecutar_pseudocodigo(
         "variables":
             ejecutor.variables
     }
-
-
-
 
 def escapar_mermaid(
     texto
@@ -1822,8 +2358,6 @@ def escapar_mermaid(
 
 
     return texto
-
-
 
 def generar_diagrama(
     pseudocodigo
@@ -1903,9 +2437,11 @@ def generar_diagrama(
             )
         ):
 
-            decision = pila[-1][
-                "nodo"
-            ]
+            decision = (
+                pila[-1][
+                    "nodo"
+                ]
+            )
 
 
             mermaid.append(
@@ -1926,9 +2462,11 @@ def generar_diagrama(
             )
         ):
 
-            decision = pila[-1][
-                "nodo"
-            ]
+            decision = (
+                pila[-1][
+                    "nodo"
+                ]
+            )
 
 
             mermaid.append(
@@ -2018,15 +2556,15 @@ def generar_diagrama(
 
             continue
 
-
-
         if mayus.startswith(
             "LEER "
         ):
 
-            variable = linea[
-                5:
-            ].strip()
+            variable = (
+                linea[
+                    5:
+                ].strip()
+            )
 
 
             contador += 1
@@ -2051,14 +2589,15 @@ def generar_diagrama(
 
             continue
 
-
         if mayus.startswith(
             "ESCRIBIR"
         ):
 
-            texto = linea[
-                8:
-            ].strip()
+            texto = (
+                linea[
+                    8:
+                ].strip()
+            )
 
 
             texto = escapar_mermaid(
@@ -2083,8 +2622,6 @@ def generar_diagrama(
 
             continue
 
-
-
         coincidencia = re.match(
             r"^Si\s+(.+?)\s+Entonces$",
             linea,
@@ -2094,8 +2631,10 @@ def generar_diagrama(
 
         if coincidencia:
 
-            condicion = coincidencia.group(
-                1
+            condicion = (
+                coincidencia.group(
+                    1
+                )
             )
 
 
@@ -2122,9 +2661,11 @@ def generar_diagrama(
                 )
             ):
 
-                decision_padre = pila[-1][
-                    "nodo"
-                ]
+                decision_padre = (
+                    pila[-1][
+                        "nodo"
+                    ]
+                )
 
 
                 mermaid.append(
@@ -2145,9 +2686,11 @@ def generar_diagrama(
                 )
             ):
 
-                decision_padre = pila[-1][
-                    "nodo"
-                ]
+                decision_padre = (
+                    pila[-1][
+                        "nodo"
+                    ]
+                )
 
 
                 mermaid.append(
@@ -2182,8 +2725,6 @@ def generar_diagrama(
 
             continue
 
-
-
         if mayus in (
             "SINO",
             "SI NO"
@@ -2209,13 +2750,14 @@ def generar_diagrama(
                 ] = True
 
 
-                anterior = actual[
-                    "nodo"
-                ]
+                anterior = (
+                    actual[
+                        "nodo"
+                    ]
+                )
 
 
             continue
-
 
         if mayus in (
             "FINSI",
@@ -2226,9 +2768,11 @@ def generar_diagrama(
 
                 actual = pila.pop()
 
-                decision = actual[
-                    "nodo"
-                ]
+                decision = (
+                    actual[
+                        "nodo"
+                    ]
+                )
 
 
                 if actual[
@@ -2242,7 +2786,9 @@ def generar_diagrama(
 
                     contador += 1
 
-                    union = f"n{contador}"
+                    union = (
+                        f"n{contador}"
+                    )
 
 
                     mermaid.append(
@@ -2287,7 +2833,9 @@ def generar_diagrama(
 
                     contador += 1
 
-                    union = f"n{contador}"
+                    union = (
+                        f"n{contador}"
+                    )
 
 
                     mermaid.append(
@@ -2310,7 +2858,6 @@ def generar_diagrama(
 
             continue
 
-
         coincidencia = re.match(
             r"^Para\s+(\w+)",
             linea,
@@ -2320,14 +2867,18 @@ def generar_diagrama(
 
         if coincidencia:
 
-            variable = coincidencia.group(
-                1
+            variable = (
+                coincidencia.group(
+                    1
+                )
             )
 
 
             contador += 1
 
-            nodo = f"n{contador}"
+            nodo = (
+                f"n{contador}"
+            )
 
 
             mermaid.append(
@@ -2342,15 +2893,15 @@ def generar_diagrama(
 
             continue
 
-
-
         if mayus.startswith(
             "MIENTRAS "
         ):
 
-            condicion = linea[
-                9:
-            ].strip()
+            condicion = (
+                linea[
+                    9:
+                ].strip()
+            )
 
 
             condicion = re.sub(
@@ -2368,7 +2919,9 @@ def generar_diagrama(
 
             contador += 1
 
-            nodo = f"n{contador}"
+            nodo = (
+                f"n{contador}"
+            )
 
 
             mermaid.append(
@@ -2383,13 +2936,13 @@ def generar_diagrama(
 
             continue
 
-
-
         if mayus == "REPETIR":
 
             contador += 1
 
-            nodo = f"n{contador}"
+            nodo = (
+                f"n{contador}"
+            )
 
 
             mermaid.append(
@@ -2403,8 +2956,6 @@ def generar_diagrama(
 
 
             continue
-
-
 
         if "<-" in linea:
 
@@ -2428,7 +2979,9 @@ def generar_diagrama(
 
             contador += 1
 
-            nodo = f"n{contador}"
+            nodo = (
+                f"n{contador}"
+            )
 
 
             mermaid.append(
@@ -2463,9 +3016,6 @@ def generar_diagrama(
         mermaid
     )
 
-
-
-
 @app.route(
     "/api/ejercicios",
     methods=["GET"]
@@ -2488,7 +3038,9 @@ def obtener_ejercicios():
     """)
 
 
-    filas = cursor.fetchall()
+    filas = (
+        cursor.fetchall()
+    )
 
 
     cursor.close()
@@ -2515,8 +3067,6 @@ def obtener_ejercicios():
 
         for fila in filas
     ])
-
-
 
 @app.route(
     "/api/ejercicios",
@@ -2562,11 +3112,16 @@ def crear_ejercicio():
         )
 
 
-        fila = cursor.fetchone()
+        fila = (
+            cursor.fetchone()
+        )
 
-        nuevo_id = fila[
-            "id"
-        ]
+
+        nuevo_id = (
+            fila[
+                "id"
+            ]
+        )
 
 
     else:
@@ -2584,7 +3139,9 @@ def crear_ejercicio():
         )
 
 
-        nuevo_id = cursor.lastrowid
+        nuevo_id = (
+            cursor.lastrowid
+        )
 
 
     conn.commit()
@@ -2598,7 +3155,6 @@ def crear_ejercicio():
         "ok": True,
         "id": nuevo_id
     })
-
 
 @app.route(
     "/api/ejercicios/<int:id>",
@@ -2675,7 +3231,6 @@ def actualizar_ejercicio(id):
         "ok": True
     })
 
-
 @app.route(
     "/api/ejercicios/<int:id>",
     methods=["DELETE"]
@@ -2694,7 +3249,9 @@ def eliminar_ejercicio(id):
             DELETE FROM ejercicios
             WHERE id = %s
             """,
-            (id,)
+            (
+                id,
+            )
         )
 
 
@@ -2705,7 +3262,9 @@ def eliminar_ejercicio(id):
             DELETE FROM ejercicios
             WHERE id = ?
             """,
-            (id,)
+            (
+                id,
+            )
         )
 
 
@@ -2720,8 +3279,6 @@ def eliminar_ejercicio(id):
         "ok": True
     })
 
-
-
 @app.route(
     "/api/entradas",
     methods=["POST"]
@@ -2733,10 +3290,12 @@ def entradas():
     ) or {}
 
 
-    variables = detectar_variables_entrada(
-        datos.get(
-            "pseudocodigo",
-            ""
+    variables = (
+        detectar_variables_entrada(
+            datos.get(
+                "pseudocodigo",
+                ""
+            )
         )
     )
 
@@ -2746,6 +3305,42 @@ def entradas():
             variables
     })
 
+@app.route(
+    "/api/preparar_entradas",
+    methods=["POST"]
+)
+def preparar_entradas():
+
+    datos = request.get_json(
+        silent=True
+    ) or {}
+
+
+    pseudocodigo = datos.get(
+        "pseudocodigo",
+        ""
+    )
+
+
+    valores = datos.get(
+        "entradas",
+        {}
+    )
+
+
+    esquema = preparar_esquema_entradas(
+        pseudocodigo,
+        valores
+    )
+
+
+    return jsonify({
+        "ok":
+            True,
+
+        "esquema":
+            esquema
+    })
 
 @app.route(
     "/api/ejecutar",
@@ -2802,13 +3397,14 @@ def ejecutar():
     except Exception as error:
 
         return jsonify({
-            "ok": False,
-            "error": str(
-                error
-            )
+            "ok":
+                False,
+
+            "error":
+                str(
+                    error
+                )
         }), 400
-
-
 
 @app.route(
     "/api/diagrama",
@@ -2832,21 +3428,24 @@ def diagrama():
 
 
         return jsonify({
-            "ok": True,
-            "mermaid": codigo
-        })
+            "ok":
+                True,
 
+            "mermaid":
+                codigo
+        })
 
     except Exception as error:
 
         return jsonify({
-            "ok": False,
-            "error": str(
-                error
-            )
+            "ok":
+                False,
+
+            "error":
+                str(
+                    error
+                )
         }), 400
-
-
 
 @app.route("/")
 def index():
@@ -2855,19 +3454,13 @@ def index():
         "index.html"
     )
 
-
-
 init_db()
-
-
 
 def abrir_navegador():
 
     webbrowser.open(
         "http://127.0.0.1:5000"
     )
-
-
 
 if __name__ == "__main__":
 
