@@ -41,7 +41,7 @@ SQLITE_DB = os.path.join(
 
 # ============================================================
 # BASE DE DATOS
-# SQLITE LOCAL Y POSTGRESQL SUPABASE EN RENDER
+# SQLITE LOCAL Y POSTGRESQL / SUPABASE EN RENDER
 # ============================================================
 
 DATABASE_URL = os.environ.get(
@@ -52,8 +52,6 @@ DATABASE_URL = os.environ.get(
 USAR_POSTGRES = bool(
     DATABASE_URL
 )
-
-
 
 def get_db():
 
@@ -137,7 +135,6 @@ def quitar_comentarios(linea):
     return linea
 
 
-
 def redon_pseint(valor):
 
     if valor >= 0:
@@ -151,10 +148,9 @@ def redon_pseint(valor):
     )
 
 
-
 def normalizar_operadores(texto):
 
-   
+
     texto = texto.replace(
         "<>",
         "!="
@@ -181,14 +177,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
     texto = re.sub(
         r"\bREDON\s*\(",
         "redon(",
         texto,
         flags=re.IGNORECASE
     )
-
 
     texto = re.sub(
         r"\bRC\s*\(",
@@ -197,7 +191,6 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
     texto = re.sub(
         r"\bABS\s*\(",
         "abs(",
@@ -205,15 +198,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
- 
     texto = re.sub(
         r"\bLN\s*\(",
         "log(",
         texto,
         flags=re.IGNORECASE
     )
-
 
     texto = re.sub(
         r"\bEXP\s*\(",
@@ -222,14 +212,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
     texto = re.sub(
         r"\bSEN\s*\(",
         "sin(",
         texto,
         flags=re.IGNORECASE
     )
-
 
     texto = re.sub(
         r"\bCOS\s*\(",
@@ -238,16 +226,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
-
     texto = re.sub(
         r"\bTAN\s*\(",
         "tan(",
         texto,
         flags=re.IGNORECASE
     )
-
-
 
     texto = re.sub(
         r"\bASEN\s*\(",
@@ -256,16 +240,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
-
     texto = re.sub(
         r"\bACOS\s*\(",
         "acos(",
         texto,
         flags=re.IGNORECASE
     )
-
-
 
     texto = re.sub(
         r"\bATAN\s*\(",
@@ -274,15 +254,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
-
     texto = re.sub(
         r"\bY\b",
         " and ",
         texto,
         flags=re.IGNORECASE
     )
-
 
     texto = re.sub(
         r"\bO\b",
@@ -291,8 +268,6 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
-
     texto = re.sub(
         r"\bNO\b",
         " not ",
@@ -300,12 +275,10 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
     texto = texto.replace(
         "^",
         "**"
     )
-
 
     texto = re.sub(
         r"\bVerdadero\b",
@@ -314,14 +287,12 @@ def normalizar_operadores(texto):
         flags=re.IGNORECASE
     )
 
-
     texto = re.sub(
         r"\bFalso\b",
         "False",
         texto,
         flags=re.IGNORECASE
     )
-
 
     texto = re.sub(
         r"(?<![<>=!])=(?!=)",
@@ -425,12 +396,18 @@ def convertir_valor(valor):
         return ""
 
 
-    if valor.lower() == "verdadero":
+    if valor.lower() in (
+        "verdadero",
+        "true"
+    ):
 
         return True
 
 
-    if valor.lower() == "falso":
+    if valor.lower() in (
+        "falso",
+        "false"
+    ):
 
         return False
 
@@ -468,8 +445,6 @@ def evaluar_expresion(
 
     expresion = expresion.strip()
 
-
-    # Texto entre comillas
     if (
         len(expresion) >= 2
         and expresion[0] == '"'
@@ -479,7 +454,6 @@ def evaluar_expresion(
         return expresion[1:-1]
 
 
-    # Sustituir variables por valores
     nombres = sorted(
         variables.keys(),
         key=len,
@@ -506,7 +480,6 @@ def evaluar_expresion(
     )
 
 
-    # Validación básica
     permitidos = re.fullmatch(
         r"[0-9A-Za-z_+\-*/().%, '<>=!&|]*",
         expresion
@@ -532,7 +505,6 @@ def evaluar_expresion(
     except Exception:
 
         return expresion
-
 
 
 def evaluar_condicion(
@@ -588,7 +560,6 @@ def evaluar_condicion(
     except Exception:
 
         return False
-
 
 
 def dividir_escribir(
@@ -656,7 +627,6 @@ def dividir_escribir(
     return partes
 
 
-
 class Ejecutor:
 
     def __init__(
@@ -709,7 +679,6 @@ class Ejecutor:
         )
 
 
-
     def ejecutar_bloque(
         self,
         inicio,
@@ -726,7 +695,6 @@ class Ejecutor:
             mayus = linea.upper()
 
 
-
             if mayus.startswith(
                 "ALGORITMO"
             ):
@@ -735,13 +703,11 @@ class Ejecutor:
 
                 continue
 
-
             if mayus == "FINALGORITMO":
 
                 i += 1
 
                 continue
-
 
             if mayus.startswith(
                 "DEFINIR"
@@ -750,7 +716,6 @@ class Ejecutor:
                 i += 1
 
                 continue
-
 
             coincidencia = re.match(
                 r"^Leer\s+(.+)$",
@@ -879,7 +844,6 @@ class Ejecutor:
 
                 continue
 
-
             coincidencia = re.match(
                 r"^Escribir\s*(.*)$",
                 linea,
@@ -950,7 +914,6 @@ class Ejecutor:
                 i += 1
 
                 continue
-
 
             coincidencia = re.match(
                 r"^([A-Za-z_][A-Za-z0-9_]*)\s*<-\s*(.+)$",
@@ -1033,6 +996,99 @@ class Ejecutor:
                 i = fin_si + 1
 
                 continue
+
+
+
+            coincidencia = re.match(
+                r"^Segun\s+(.+?)\s+Hacer$",
+                linea,
+                flags=re.IGNORECASE
+            )
+
+
+            if coincidencia:
+
+                expresion_segun = (
+                    coincidencia.group(1)
+                )
+
+
+                valor_segun = evaluar_expresion(
+                    expresion_segun,
+                    self.variables
+                )
+
+
+                fin_segun = self.buscar_fin_segun(
+                    i
+                )
+
+
+                casos = self.obtener_casos_segun(
+                    i,
+                    fin_segun
+                )
+
+
+                bloque_ejecutado = False
+
+                bloque_default = None
+
+
+                for caso in casos:
+
+
+                    if caso["default"]:
+
+                        bloque_default = caso
+
+                        continue
+
+
+
+                    for expresion_caso in caso[
+                        "valores"
+                    ]:
+
+                        valor_caso = evaluar_expresion(
+                            expresion_caso,
+                            self.variables
+                        )
+
+
+                        if valor_segun == valor_caso:
+
+                            self.ejecutar_bloque(
+                                caso["inicio"],
+                                caso["fin"]
+                            )
+
+
+                            bloque_ejecutado = True
+
+                            break
+
+
+                    if bloque_ejecutado:
+
+                        break
+
+
+                if (
+                    not bloque_ejecutado
+                    and bloque_default is not None
+                ):
+
+                    self.ejecutar_bloque(
+                        bloque_default["inicio"],
+                        bloque_default["fin"]
+                    )
+
+
+                i = fin_segun + 1
+
+                continue
+
 
 
             coincidencia = re.match(
@@ -1307,6 +1363,283 @@ class Ejecutor:
 
 
 
+    def buscar_fin_segun(
+        self,
+        posicion
+    ):
+
+        profundidad = 0
+
+
+        for i in range(
+            posicion + 1,
+            len(self.lineas)
+        ):
+
+            mayus = self.lineas[
+                i
+            ].upper()
+
+
+            if re.match(
+                r"^SEGUN\s+.+\s+HACER$",
+                self.lineas[i],
+                flags=re.IGNORECASE
+            ):
+
+                profundidad += 1
+
+
+            if mayus in (
+                "FINSEGUN",
+                "FIN SEGUN"
+            ):
+
+                if profundidad == 0:
+
+                    return i
+
+
+                profundidad -= 1
+
+
+        return len(
+            self.lineas
+        ) - 1
+
+
+
+    def obtener_casos_segun(
+        self,
+        posicion,
+        fin_segun
+    ):
+
+        casos = []
+
+        etiquetas = []
+
+        # Profundidades internas
+        profundidad_si = 0
+        profundidad_para = 0
+        profundidad_mientras = 0
+        profundidad_repetir = 0
+        profundidad_segun = 0
+
+
+        for i in range(
+            posicion + 1,
+            fin_segun
+        ):
+
+            linea = self.lineas[i]
+
+            mayus = linea.upper()
+
+
+            nivel_principal = (
+                profundidad_si == 0
+                and profundidad_para == 0
+                and profundidad_mientras == 0
+                and profundidad_repetir == 0
+                and profundidad_segun == 0
+            )
+
+
+            if nivel_principal:
+
+                # De Otro Modo:
+                if re.match(
+                    r"^De\s+Otro\s+Modo\s*:$",
+                    linea,
+                    flags=re.IGNORECASE
+                ):
+
+                    etiquetas.append({
+                        "posicion": i,
+                        "default": True,
+                        "valores": []
+                    })
+
+                    continue
+
+
+                # Caso:
+                # 1:
+                # 1, 3, 5:
+                coincidencia_caso = re.match(
+                    r"^(.+?)\s*:$",
+                    linea
+                )
+
+
+                if coincidencia_caso:
+
+                    contenido = (
+                        coincidencia_caso
+                        .group(1)
+                        .strip()
+                    )
+
+
+                    valores = dividir_escribir(
+                        contenido
+                    )
+
+
+                    etiquetas.append({
+                        "posicion": i,
+                        "default": False,
+                        "valores": valores
+                    })
+
+                    continue
+
+
+            if re.match(
+                r"^Si\s+.+\s+Entonces$",
+                linea,
+                flags=re.IGNORECASE
+            ):
+
+                profundidad_si += 1
+
+                continue
+
+
+            if mayus in (
+                "FINSI",
+                "FIN SI"
+            ):
+
+                if profundidad_si > 0:
+
+                    profundidad_si -= 1
+
+                continue
+
+
+            if re.match(
+                r"^Para\s+",
+                linea,
+                flags=re.IGNORECASE
+            ):
+
+                profundidad_para += 1
+
+                continue
+
+
+            if mayus == "FINPARA":
+
+                if profundidad_para > 0:
+
+                    profundidad_para -= 1
+
+                continue
+
+
+            if re.match(
+                r"^Mientras\s+",
+                linea,
+                flags=re.IGNORECASE
+            ):
+
+                profundidad_mientras += 1
+
+                continue
+
+
+            if mayus == "FINMIENTRAS":
+
+                if profundidad_mientras > 0:
+
+                    profundidad_mientras -= 1
+
+                continue
+
+
+            if mayus == "REPETIR":
+
+                profundidad_repetir += 1
+
+                continue
+
+
+            if mayus.startswith(
+                "HASTA QUE"
+            ):
+
+                if profundidad_repetir > 0:
+
+                    profundidad_repetir -= 1
+
+                continue
+
+
+            if re.match(
+                r"^Segun\s+.+\s+Hacer$",
+                linea,
+                flags=re.IGNORECASE
+            ):
+
+                profundidad_segun += 1
+
+                continue
+
+
+            if mayus in (
+                "FINSEGUN",
+                "FIN SEGUN"
+            ):
+
+                if profundidad_segun > 0:
+
+                    profundidad_segun -= 1
+
+                continue
+
+
+        for indice, etiqueta in enumerate(
+            etiquetas
+        ):
+
+            inicio_bloque = (
+                etiqueta["posicion"] + 1
+            )
+
+
+            if indice + 1 < len(
+                etiquetas
+            ):
+
+                fin_bloque = etiquetas[
+                    indice + 1
+                ]["posicion"]
+
+            else:
+
+                fin_bloque = fin_segun
+
+
+            casos.append({
+                "default":
+                    etiqueta["default"],
+
+                "valores":
+                    etiqueta["valores"],
+
+                "inicio":
+                    inicio_bloque,
+
+                "fin":
+                    fin_bloque
+            })
+
+
+        return casos
+
+
     def buscar_fin_para(
         self,
         posicion
@@ -1430,7 +1763,6 @@ class Ejecutor:
 
 
 
-
 def ejecutar_pseudocodigo(
     pseudocodigo,
     entradas
@@ -1452,6 +1784,7 @@ def ejecutar_pseudocodigo(
         "variables":
             ejecutor.variables
     }
+
 
 
 
@@ -1489,6 +1822,7 @@ def escapar_mermaid(
 
 
     return texto
+
 
 
 def generar_diagrama(
@@ -1651,6 +1985,41 @@ def generar_diagrama(
             continue
 
 
+        if re.match(
+            r"^Segun\s+.+\s+Hacer$",
+            linea,
+            flags=re.IGNORECASE
+        ):
+
+            continue
+
+
+        if mayus in (
+            "FINSEGUN",
+            "FIN SEGUN"
+        ):
+
+            continue
+
+
+        if re.match(
+            r"^De\s+Otro\s+Modo\s*:$",
+            linea,
+            flags=re.IGNORECASE
+        ):
+
+            continue
+
+
+        if re.match(
+            r"^.+:\s*$",
+            linea
+        ):
+
+            continue
+
+
+
         if mayus.startswith(
             "LEER "
         ):
@@ -1681,7 +2050,6 @@ def generar_diagrama(
 
 
             continue
-
 
 
         if mayus.startswith(
@@ -1847,7 +2215,6 @@ def generar_diagrama(
 
 
             continue
-
 
 
         if mayus in (
@@ -2017,6 +2384,7 @@ def generar_diagrama(
             continue
 
 
+
         if mayus == "REPETIR":
 
             contador += 1
@@ -2096,6 +2464,8 @@ def generar_diagrama(
     )
 
 
+
+
 @app.route(
     "/api/ejercicios",
     methods=["GET"]
@@ -2145,7 +2515,6 @@ def obtener_ejercicios():
 
         for fila in filas
     ])
-
 
 
 
@@ -2307,7 +2676,6 @@ def actualizar_ejercicio(id):
     })
 
 
-
 @app.route(
     "/api/ejercicios/<int:id>",
     methods=["DELETE"]
@@ -2379,7 +2747,6 @@ def entradas():
     })
 
 
-
 @app.route(
     "/api/ejecutar",
     methods=["POST"]
@@ -2443,7 +2810,6 @@ def ejecutar():
 
 
 
-
 @app.route(
     "/api/diagrama",
     methods=["POST"]
@@ -2500,6 +2866,7 @@ def abrir_navegador():
     webbrowser.open(
         "http://127.0.0.1:5000"
     )
+
 
 
 if __name__ == "__main__":
